@@ -4,11 +4,12 @@ import crypto from "crypto";
 import { auth } from "@/lib/auth";
 import { dbConnect } from "@/lib/dbConnect";
 import { Agent } from "@/models/Agent";
+import { Wallet } from "@/models/Wallet";
 import { Policy } from "@/models/Policy";
 import { AgentTransaction } from "@/models/AgentTransaction";
 import { AgentActivity } from "@/models/AgentActivity";
 import { KillSwitchEvent } from "@/models/KillSwitchEvent";
-import { evaluatePolicy } from "@/services/engine/policyEngine";
+import { evaluatePolicy } from "@/services/policy/policyEngine";
 
 const runSimulationSchema = z.object({
   scenario: z.enum(["compromised", "drain", "malicious", "fake_vendor", "spam", "bypass"]),
@@ -134,10 +135,10 @@ export async function POST(req: NextRequest) {
         reason: `Auto Kill Switch triggered by high risk simulation attack: ${parsed.scenario}. Scorer returned score: ${validation.riskScore}.`,
       });
 
-      // Pause all agents
+      // Pause all agents belonging to this owner
       await Agent.updateMany({ ownerId: session.user.id }, { status: "paused" });
-      // Freeze all wallets
-      await Agent.updateMany({ ownerId: session.user.id }, { status: "frozen" });
+      // Freeze all wallets belonging to this owner (bug fix: was Agent.updateMany)
+      await Wallet.updateMany({ ownerId: session.user.id }, { status: "frozen" });
 
       await AgentActivity.create({
         agentId: agent._id,

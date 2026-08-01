@@ -84,13 +84,25 @@ export default function DashboardLayout({
           <Link
             href="/dashboard/agents"
             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
-              pathname.startsWith("/dashboard/agents")
+              pathname === "/dashboard/agents"
                 ? "bg-[#2563EB]/10 text-[#2563EB] border border-[#2563EB]/25"
                 : "text-gray-400 hover:text-white hover:bg-[#101827]/60"
             }`}
           >
             <span className="text-lg">🤖</span>
             {sidebarOpen && <span>Agents Console</span>}
+          </Link>
+
+          <Link
+            href="/dashboard/agents/connected"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
+              pathname === "/dashboard/agents/connected"
+                ? "bg-[#2563EB]/10 text-[#2563EB] border border-[#2563EB]/25"
+                : "text-gray-400 hover:text-white hover:bg-[#101827]/60"
+            }`}
+          >
+            <span className="text-lg">🌐</span>
+            {sidebarOpen && <span>Connected Agents</span>}
           </Link>
 
           <Link

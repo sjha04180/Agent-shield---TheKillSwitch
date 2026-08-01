@@ -5,9 +5,14 @@ export interface HealthStatus {
   dbStatus: string;
   blockchainStatus: string;
   geminiStatus: string;
+  lyzrStatus: string;
+  simulatorStatus: string;
+  metaMaskStatus: string;
   responseTime: number;
   memoryUsage: number;
   storageUsage: number;
+  apiLatencyMs?: number;
+  version?: string;
 }
 
 interface HealthState {
@@ -25,7 +30,7 @@ export const useSystemHealthStore = create<HealthState>((set) => ({
   fetchHealth: async () => {
     set({ loading: true, error: null });
     try {
-      const res = await fetch("/api/admin/system-health");
+      const res = await fetch("/api/system/health");
       const data = await res.json();
       if (data.success) {
         set({ health: data.data, loading: false });
