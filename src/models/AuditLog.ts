@@ -17,6 +17,6 @@ const AuditLogSchema = new Schema<IAuditLog>({
   details: { type: String, required: true },
   metadata: { type: Schema.Types.Mixed },
   ipAddress: { type: String, required: true }
-}, { timestamps: true, updatedAt: false });
+}, { timestamps: { createdAt: true, updatedAt: false } });
 
 export const AuditLog: Model<IAuditLog> = mongoose.models.AuditLog || mongoose.model<IAuditLog>('AuditLog', AuditLogSchema);

@@ -3,7 +3,7 @@ FROM node:18-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+RUN npm install --legacy-peer-deps
 
 # 2. Rebuild the source code only when needed
 FROM node:18-alpine AS builder

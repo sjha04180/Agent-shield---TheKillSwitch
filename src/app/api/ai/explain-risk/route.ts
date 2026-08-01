@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     }
 
     const queryPrompt = `Provide a threat analysis breakdown for transaction: ${risk.transactionId}.
-Agent name: ${risk.agentId?.name || "Autonomous Bot"}.
+Agent name: ${(risk.agentId as any)?.name || "Autonomous Bot"}.
 Aggregated Risk Score: ${risk.riskScore}/100.
 Contributing Risk Factors identified:
 ${risk.factorsTriggered.map(f => `- Factor: ${f}`).join("\n")}

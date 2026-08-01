@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import mongoose from "mongoose";
 import { auth } from "@/lib/auth";
 import { dbConnect } from "@/lib/dbConnect";
 import { Report } from "@/models/Report";
+
 
 export async function GET() {
   try {
@@ -28,7 +30,7 @@ export async function GET() {
           format: "CSV",
           path: "/reports/q3_threat_audit.csv",
           size: "45 KB",
-          generatedBy: session.user.id
+          generatedBy: new mongoose.Types.ObjectId(session.user.id)
         },
         {
           title: "Weekly Policy Violations Summary",
@@ -36,9 +38,9 @@ export async function GET() {
           format: "PDF",
           path: "/reports/weekly_violations_log.pdf",
           size: "1.2 MB",
-          generatedBy: session.user.id
+          generatedBy: new mongoose.Types.ObjectId(session.user.id)
         }
-      ]);
+      ]) as any;
     }
 
     return NextResponse.json({ success: true, data: logs });

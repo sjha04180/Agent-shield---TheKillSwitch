@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
 
     // Generate ECDSA signature
     const signature = await signTransactionPayload(
-      agent.address || "0x2563EB0000000000000000000000000000000001", // fallback agent contract address
+      (agent as any).address || "0x2563EB0000000000000000000000000000000001", // fallback agent contract address
       wallet.address,
       parsed.target,
       parsed.value,

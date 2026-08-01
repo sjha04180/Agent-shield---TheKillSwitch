@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
           { role: "model", content: aiResponse, timestamp: new Date() }
         ]
       });
-      chatId = newChat._id as string;
+      chatId = newChat._id.toString();
     }
 
     return NextResponse.json({

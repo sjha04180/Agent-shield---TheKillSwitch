@@ -79,10 +79,8 @@ export async function evaluatePolicy(
       status: "WARNING",
       message: `Elevated risk score (${riskScore}). Flags triggered: ${riskResult.factors.join(", ")}`
     });
-    if (finalDecision !== "Blocked") {
-      finalDecision = "Pending Manual Review";
-      overallReason = "Elevated risk score flagged for review.";
-    }
+    finalDecision = "Pending Manual Review";
+    overallReason = "Elevated risk score flagged for review.";
   } else {
     ruleResults.push({
       ruleName: "Risk Threshold",

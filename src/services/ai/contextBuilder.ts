@@ -29,7 +29,7 @@ Active Security Halt (Emergency Kill Switch): ${killSwitchActive ? "ACTIVE" : "I
 ${agents.map(a => `- Agent: "${a.name}" | Status: ${a.status} | Wallet address: ${a.walletId} | Network: ${a.network}`).join("\n")}
 
 #### Smart Contract Wallets:
-${wallets.map(w => `- Wallet Address: ${w.address} | Network: ${w.network} | Status: ${w.status}`).join("\n")}
+${wallets.map(w => `- Wallet Address: ${w.address} | Chain ID: ${w.chainId} | Status: ${w.status}`).join("\n")}
 
 #### Configured Governance Policies:
 ${policies.map(p => `- Policy Name: "${p.name}" | Single Tx Limit: ${p.maxSingleTx} ETH | Daily Spent limit: ${p.maxDailySpent} ETH | Allowed Risk Limit Score: ${p.maxRiskScore}/100`).join("\n")}
