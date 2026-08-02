@@ -1,43 +1,38 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { getToken } from 'next-auth/jwt';
+import { auth } from "@/lib/auth";
+import { NextResponse } from "next/server";
 
-export async function middleware(req: NextRequest) {
-  const token = await getToken({
-    req,
-    secret: process.env.NEXTAUTH_SECRET || "supersecretdevelopmentkeyagentshield12345",
-  });
-
+export default auth((req) => {
   const { pathname } = req.nextUrl;
+  const isLoggedIn = !!req.auth;
 
   // 1. Redirect authenticated users away from auth pages (login, register)
-  if (token && (pathname === '/login' || pathname === '/register')) {
-    return NextResponse.redirect(new URL('/dashboard', req.url));
+  if (isLoggedIn && (pathname === "/login" || pathname === "/register")) {
+    return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
   // 2. Protect Dashboard paths
-  if (pathname.startsWith('/dashboard')) {
-    if (!token) {
-      const loginUrl = new URL('/login', req.url);
-      // Remember where the user was trying to go
-      loginUrl.searchParams.set('callbackUrl', req.url);
+  if (pathname.startsWith("/dashboard")) {
+    if (!isLoggedIn) {
+      const loginUrl = new URL("/login", req.url);
+      loginUrl.searchParams.set("callbackUrl", req.url);
       return NextResponse.redirect(loginUrl);
     }
 
     // Protect Admin console paths specifically
-    if (pathname.startsWith('/dashboard/admin') && token.role !== 'admin') {
-      return NextResponse.redirect(new URL('/dashboard', req.url));
+    const userRole = (req.auth?.user as any)?.role;
+    if (pathname.startsWith("/dashboard/admin") && userRole !== "admin") {
+      return NextResponse.redirect(new URL("/dashboard", req.url));
     }
   }
 
   return NextResponse.next();
-}
+});
 
 export const config = {
   // Catch all pages except assets, static folders and icons
   matcher: [
-    '/dashboard/:path*',
-    '/login',
-    '/register',
+    "/dashboard/:path*",
+    "/login",
+    "/register",
   ],
 };
