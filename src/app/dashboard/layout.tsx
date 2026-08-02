@@ -95,9 +95,7 @@ export default function DashboardLayout({
       <aside className={`bg-[#101827] border-r border-[#1f2937]/80 flex flex-col transition-all duration-300 ${sidebarOpen ? 'w-64' : 'w-20'} relative z-30`}>
         {/* Logo / Header */}
         <div className="h-16 border-b border-[#1f2937]/80 flex items-center px-5 gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#2563EB] to-[#10B981] flex items-center justify-center font-bold text-white shadow-glow flex-shrink-0">
-            A
-          </div>
+          <img src="/icon.png" alt="AgentShield Logo" className="w-8 h-8 object-contain rounded-lg shadow-glow flex-shrink-0" />
           {sidebarOpen && (
             <span className="font-semibold tracking-wider text-sm text-white">Agent<span className="text-[#2563EB]">Shield</span></span>
           )}

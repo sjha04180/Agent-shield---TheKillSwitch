@@ -7,9 +7,7 @@ export default function LandingPage() {
       <header className="border-b border-[#1f2937]/60 bg-[#050816]/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#2563EB] to-[#10B981] flex items-center justify-center font-bold text-white shadow-glow">
-              A
-            </div>
+            <img src="/icon.png" alt="AgentShield Logo" className="w-8 h-8 object-contain rounded-lg shadow-glow" />
             <span className="font-semibold text-lg tracking-wider text-white">Agent<span className="text-[#2563EB]">Shield</span></span>
           </div>
           <nav className="hidden md:flex items-center gap-8 text-sm text-gray-400">
@@ -36,7 +34,7 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto text-center relative z-10">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#2563EB]/10 border border-[#2563EB]/30 text-xs font-semibold text-[#2563EB] mb-8">
             <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" />
-            Solution for InnovaHack Problem Statement "The Kill Switch"
+            Solution for InnovaHack 2026 Round 2 Domain 1: FinTech — Problem Statement #2 "The Kill Switch"
           </div>
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-white mb-6 leading-tight">
             AgentShield

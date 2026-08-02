@@ -1,11 +1,17 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
 import { dbConnect } from "@/lib/dbConnect";
 import { User } from "@/models/User";
 import { verifyPassword } from "@/utils/crypto";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      allowDangerousEmailAccountLinking: true,
+    }),
     CredentialsProvider({
       name: "Credentials",
       credentials: {
@@ -39,12 +45,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     })
   ],
   callbacks: {
+    async signIn({ user, account }) {
+      if (account?.provider === "google") {
+        if (!user.email) return false;
+        await dbConnect();
+        
+        let dbUser = await User.findOne({ email: user.email.toLowerCase() });
+        if (!dbUser) {
+          dbUser = await User.create({
+            email: user.email.toLowerCase(),
+            name: user.name || "Google User",
+            role: "owner",
+            status: "active",
+          });
+        }
+        
+        user.id = dbUser._id.toString();
+        user.role = dbUser.role || "owner";
+      }
+      return true;
+    },
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.role = user.role;
         token.id = user.id || "";
       }
-      // Support manual updates (e.g. updating profile details)
       if (trigger === "update" && session) {
         token.name = session.name || token.name;
         token.email = session.email || token.email;
@@ -66,7 +91,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 Days
+    maxAge: 30 * 24 * 60 * 60,
   },
   secret: process.env.NEXTAUTH_SECRET || "supersecretdevelopmentkeyagentshield12345",
 });

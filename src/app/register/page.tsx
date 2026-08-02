@@ -92,9 +92,7 @@ export default function RegisterPage() {
 
       <div className="w-full max-w-md bg-[#101827] border border-[#1f2937]/80 rounded-2xl p-8 shadow-glow relative z-10">
         <div className="text-center mb-8">
-          <div className="inline-flex w-12 h-12 rounded-xl bg-gradient-to-tr from-[#2563EB] to-[#10B981] items-center justify-center font-bold text-white text-xl shadow-glow mb-4">
-            A
-          </div>
+          <img src="/icon.png" alt="AgentShield Logo" className="inline-flex w-12 h-12 object-contain rounded-xl shadow-glow mb-4" />
           <h2 className="text-2xl font-bold text-white">Create Account</h2>
           <p className="text-gray-400 text-sm mt-1">Start securing your decentralized agency</p>
         </div>

@@ -126,11 +126,11 @@ export class LyzrAdapter implements IAgentAdapter {
   async generateTransaction(agentId: string, message: string): Promise<AgentRequest> {
     const endpoint = process.env.LYZR_ENDPOINT || "https://agent-prod.studio.lyzr.ai/v3/inference/chat/";
     const apiKey = process.env.LYZR_API_KEY;
-    const userId = process.env.LYZR_USER_ID || "pjha91275@gmail.com";
+    const userId = process.env.LYZR_USER_ID;
 
-    if (!apiKey) {
-      console.warn("[LyzrAdapter] LYZR_API_KEY is not configured. Triggering failover to Demo Mode.");
-      await this.triggerDemoFailover("LYZR_API_KEY environment variable is missing.");
+    if (!apiKey || !userId) {
+      console.warn("[LyzrAdapter] LYZR_API_KEY or LYZR_USER_ID is not configured. Triggering failover to Demo Mode.");
+      await this.triggerDemoFailover("Lyzr environment variables are missing.");
       throw new Error("Lyzr unavailable. Simulator activated.");
     }
 

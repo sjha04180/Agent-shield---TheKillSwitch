@@ -1,6 +1,9 @@
 # AgentShield
 
-### Solution for InnovaHack Problem Statement "The Kill Switch"
+> [!IMPORTANT]
+> **InnovaHack 2026 (Round 2) Submission**
+> *   **Domain:** Domain 1: FinTech
+> *   **Problem Statement:** #2 — "The Kill Switch"
 
 AgentShield is a production-grade, out-of-band **Secure AI Wallet Governance Platform** designed to secure, govern, and audit financial transactions initiated by autonomous AI agents (such as Lyzr AI or internal simulators). It acts as a mandatory validation firewall between AI agents and blockchain wallets.
 
@@ -14,9 +17,9 @@ AgentShield is a production-grade, out-of-band **Secure AI Wallet Governance Pla
     *   **Sachin Jha**
     *   **Bhavesh Jadhav**
     *   **Ishaan Dubey**
-*   **Hosted Application URL:** [Launch AgentShield Console](https://your-deployed-app.vercel.app) *(Update with your Vercel deployment link)*
-*   **Demo Video Link:** [Watch Demo Video](https://youtube.com/your-demo-link) *(Update with your YouTube/Loom link)*
-*   **Project Presentation PPT:** [View Presentation Slides](https://canva.com/your-presentation-link) *(Update with your PPT link)*
+*   **Hosted Application URL:** [Launch AgentShield Console](https://your-deployed-app.vercel.app) 
+*   **Demo Video Link:** [Watch Demo Video](https://youtube.com/your-demo-link) 
+*   **Project Presentation PPT:** [View Presentation Slides](https://docs.google.com/presentation/d/14Rr943rw4kLtADsMaZOyBH1drqeAw54T/edit?usp=sharing&ouid=109932098056682112910&rtpof=true&sd=true) 
 
 ---
 
@@ -229,6 +232,27 @@ Incoming Request (x-agent-id, x-agent-token)
 
 ---
 
+## 🛠 Technology Stack
+
+AgentShield leverages a robust, modern technology stack across frontend, backend, and smart contract layers:
+
+*   **Frontend**:
+    *   **React.js (via Next.js 15)**: Powers the entire interactive Single Page App layout, state management (Zustand), and reactive telemetry dashboards.
+    *   **Tailwind CSS**: Renders the premium, dark-mode enterprise FinTech interface styling with utility classes.
+*   **Backend (Node.js)**:
+    *   **Next.js Serverless Routes**: Node.js execution environment running out-of-band validation controllers, schema verifications (Zod), and database interfaces.
+    *   **Google Gemini API**: Synthesizes natural-language explanations of blocked transactions based on policy violation audits.
+*   **Databases & Caching**:
+    *   **MongoDB Atlas**: Stores telemetry data, organization structures, and agent credentials.
+*   **AI Agents**:
+    *   **Lyzr AI Platform**: Deployed autonomous REST agents acting as live transaction proposers.
+*   **Blockchain & Smart Contracts**:
+    *   **Solidity / Hardhat**: Contract compiles, tests, and deploys `TransactionExecutor.sol` and `AgentWallet.sol` files.
+    *   **MetaMask**: Connected client wallet executing EIP-1193 sign-offs and transactions.
+    *   **Sepolia Test Network**: EVM execution network host verifying ECDSA co-signatures.
+
+---
+
 ## 🎮 Interactive Sandbox Demo Guide
 
 To demonstrate the full features of the AgentShield platform during hackathon presentations or judge evaluations, use the built-in sandbox tools:
@@ -268,6 +292,17 @@ NEXTAUTH_URL=http://localhost:3000
 MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/agentshield
 GEMINI_API_KEY=your_gemini_api_key_here
 
+# Google OAuth Credentials
+GOOGLE_CLIENT_ID=your_google_client_id_here
+GOOGLE_CLIENT_SECRET=your_google_client_secret_here
+
+# Lyzr Platform AI Credentials
+LYZR_API_KEY=your_lyzr_platform_api_key
+LYZR_ENDPOINT=https://agent-prod.studio.lyzr.ai/v3/inference/chat/
+LYZR_USER_ID=your_lyzr_registered_email
+LYZR_CLOUD_AGENT_ID=6a6e4c1ca38896fb0eb4cd1a
+LYZR_TREASURY_AGENT_ID=6a6e4e1f3e5531f4fe904659
+
 # Blockchain Sepolia Configuration
 SEPOLIA_RPC_URL=https://rpc.sepolia.org
 PRIVATE_KEY=your_metamask_private_key_here
@@ -278,14 +313,10 @@ NEXT_PUBLIC_KILL_SWITCH_ADDRESS=
 NEXT_PUBLIC_TRANSACTION_EXECUTOR_ADDRESS=
 NEXT_PUBLIC_AGENT_WALLET_ADDRESS=
 NEXT_PUBLIC_POLICY_MANAGER_ADDRESS=
-
-# Lyzr Platform AI Credentials
-LYZR_API_KEY=your_lyzr_platform_api_key
-LYZR_ENDPOINT=https://agent-prod.studio.lyzr.ai/v3/inference/chat/
-LYZR_USER_ID=your_lyzr_registered_email
-LYZR_CLOUD_AGENT_ID=6a6e4c1ca38896fb0eb4cd1a
-LYZR_TREASURY_AGENT_ID=6a6e4e1f3e5531f4fe904659
 ```
+
+> [!TIP]
+> **Google Sign-In Failover**: If `GOOGLE_CLIENT_ID` or `GOOGLE_CLIENT_SECRET` is left blank, Google authentication gracefully halts on error and triggers a user prompt to sign in via Credentials (Email/Password) to prevent application crashing.
 
 ### Installation
 
