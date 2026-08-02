@@ -1,18 +1,14 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import GoogleProvider from "next-auth/providers/google";
 import { dbConnect } from "@/lib/dbConnect";
 import { User } from "@/models/User";
 import { verifyPassword } from "@/utils/crypto";
+import { authConfig } from "./auth.config";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      allowDangerousEmailAccountLinking: true,
-      checks: ["pkce", "state"],
-    }),
+    ...authConfig.providers,
     CredentialsProvider({
       name: "Credentials",
       credentials: {
@@ -46,6 +42,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     })
   ],
   callbacks: {
+    ...authConfig.callbacks,
     async signIn({ user, account }) {
       if (account?.provider === "google") {
         if (!user.email) return false;
@@ -65,34 +62,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         user.role = dbUser.role || "owner";
       }
       return true;
-    },
-    async jwt({ token, user, trigger, session }) {
-      if (user) {
-        token.role = user.role;
-        token.id = user.id || "";
-      }
-      if (trigger === "update" && session) {
-        token.name = session.name || token.name;
-        token.email = session.email || token.email;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (session.user) {
-        session.user.role = token.role;
-        session.user.id = token.id;
-      }
-      return session;
     }
-  },
-  pages: {
-    signIn: "/login",
-    signOut: "/login",
-    error: "/login",
-  },
-  session: {
-    strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60,
-  },
-  secret: process.env.NEXTAUTH_SECRET || "supersecretdevelopmentkeyagentshield12345",
+  }
 });

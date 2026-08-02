@@ -5,9 +5,6 @@ const nextConfig: NextConfig = {
   images: {
     domains: ["images.unsplash.com", "avatars.githubusercontent.com"],
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   // Security headers equivalent to Helmet configurations
   async headers() {
     return [
