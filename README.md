@@ -1,6 +1,8 @@
-# The Kill Switch (AgentShield) — Secure AI Wallet Governance Platform
+# AgentShield
 
-**The Kill Switch** (featuring AgentShield) is a production-grade, out-of-band **Secure AI Wallet Governance Platform** designed to secure, govern, and audit financial transactions initiated by autonomous AI agents (such as Lyzr AI or internal simulators). It acts as a mandatory validation firewall between AI agents and blockchain wallets.
+### Solution for InnovaHack Problem Statement "The Kill Switch"
+
+AgentShield is a production-grade, out-of-band **Secure AI Wallet Governance Platform** designed to secure, govern, and audit financial transactions initiated by autonomous AI agents (such as Lyzr AI or internal simulators). It acts as a mandatory validation firewall between AI agents and blockchain wallets.
 
 ---
 
@@ -268,7 +270,14 @@ GEMINI_API_KEY=your_gemini_api_key_here
 
 # Blockchain Sepolia Configuration
 SEPOLIA_RPC_URL=https://rpc.sepolia.org
-MASTER_WALLET_PRIVATE_KEY=your_admin_master_wallet_signing_key
+PRIVATE_KEY=your_metamask_private_key_here
+MASTER_WALLET_PRIVATE_KEY=your_metamask_private_key_here
+
+# Deployed Contract Addresses
+NEXT_PUBLIC_KILL_SWITCH_ADDRESS=
+NEXT_PUBLIC_TRANSACTION_EXECUTOR_ADDRESS=
+NEXT_PUBLIC_AGENT_WALLET_ADDRESS=
+NEXT_PUBLIC_POLICY_MANAGER_ADDRESS=
 
 # Lyzr Platform AI Credentials
 LYZR_API_KEY=your_lyzr_platform_api_key

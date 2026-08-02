@@ -322,7 +322,7 @@ export default function DashboardLayout({
             title="Trigger Master Kill Switch"
           >
             <span>🚨</span>
-            {sidebarOpen && <span>THE KILL SWITCH</span>}
+            {sidebarOpen && <span>MASTER KILL SWITCH</span>}
           </button>
         </div>
       </aside>

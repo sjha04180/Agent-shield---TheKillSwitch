@@ -34,24 +34,28 @@ export default function LandingPage() {
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-tr from-[#2563EB]/10 to-[#10B981]/5 rounded-full blur-[120px] pointer-events-none" />
         
         <div className="max-w-5xl mx-auto text-center relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#2563EB]/10 border border-[#2563EB]/30 text-xs font-semibold text-[#2563EB] mb-8">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#2563EB]/10 border border-[#2563EB]/30 text-xs font-semibold text-[#2563EB] mb-8">
             <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" />
-            Independent Transaction Governance Layer
+            Solution for InnovaHack Problem Statement "The Kill Switch"
           </div>
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-white mb-6 leading-tight">
-            The Kill Switch for <br />
-            <span className="bg-gradient-to-r from-[#2563EB] to-[#10B981] bg-clip-text text-transparent">Autonomous AI Agents</span>
+            AgentShield
           </h1>
-          <p className="text-lg md:text-xl text-gray-400 max-w-3xl mx-auto mb-10 leading-relaxed">
-            AI Agents transact independently, exposing wallets to draining from compromise or logic flaws. 
-            AgentShield intercepts proposals outside the AI ecosystem—enforcing spending bounds, whitelists, and cryptographic freezes.
+          <p className="text-lg md:text-xl text-gray-400 max-w-3xl mx-auto mb-10 leading-relaxed font-medium">
+            Secure AI Wallet Governance Platform for Autonomous Financial Agents
           </p>
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <a href="/dashboard" className="px-8 py-4 rounded-xl bg-gradient-to-r from-[#2563EB] to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium transition-all shadow-glow text-center">
-              Connect Governance Wallet
+          <div className="flex flex-wrap justify-center gap-4">
+            <a href="/dashboard" className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-[#2563EB] to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold transition-all shadow-glow text-center text-sm min-w-[150px]">
+              Launch Demo
             </a>
-            <a href="#architecture" className="px-8 py-4 rounded-xl bg-[#101827] hover:bg-[#101827]/80 text-white font-medium border border-[#1f2937] transition text-center">
-              Read Security Protocol
+            <a href="/dashboard" className="px-6 py-3.5 rounded-xl bg-[#10B981]/10 hover:bg-[#10b981]/20 text-[#10B981] font-semibold border border-[#10B981]/30 transition text-center text-sm min-w-[150px]">
+              Live Demo
+            </a>
+            <a href="#architecture" className="px-6 py-3.5 rounded-xl bg-[#101827] hover:bg-[#101827]/80 text-white font-semibold border border-[#1f2937] transition text-center text-sm min-w-[150px]">
+              View Architecture
+            </a>
+            <a href="https://github.com/CodeCrafters/AgentShield" target="_blank" rel="noopener noreferrer" className="px-6 py-3.5 rounded-xl bg-[#101827] hover:bg-[#101827]/80 text-white font-semibold border border-[#1f2937] transition text-center text-sm min-w-[150px]">
+              GitHub
             </a>
           </div>
         </div>

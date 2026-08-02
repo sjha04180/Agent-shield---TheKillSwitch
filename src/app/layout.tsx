@@ -5,6 +5,28 @@ import "@/styles/globals.css";
 export const metadata: Metadata = {
   title: "AgentShield | Secure AI Wallet Governance Platform",
   description: "Independent, out-of-band transaction governance, spending policies, whitelists, and emergency kill switches for autonomous AI Agents.",
+  openGraph: {
+    title: "AgentShield | Secure AI Wallet Governance Platform",
+    description: "Independent, out-of-band transaction governance, spending policies, whitelists, and emergency kill switches for autonomous AI Agents.",
+    url: "https://agentshield.vercel.app",
+    siteName: "AgentShield",
+    images: [
+      {
+        url: "/icon.png",
+        width: 512,
+        height: 512,
+        alt: "AgentShield Governance Platform Logo",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "AgentShield | Secure AI Wallet Governance Platform",
+    description: "Independent, out-of-band transaction governance, spending policies, whitelists, and emergency kill switches for autonomous AI Agents.",
+    images: ["/icon.png"],
+  },
 };
 
 export default function RootLayout({
