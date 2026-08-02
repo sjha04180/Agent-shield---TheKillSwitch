@@ -125,8 +125,6 @@ export function DemoWizard() {
     }
   }, [currentStep, isOpen]);
 
-  if (!demoMode) return null;
-
   const handleStepAction = async () => {
     const step = WIZARD_STEPS[currentStep];
     if (!step) return;
@@ -251,7 +249,7 @@ export function DemoWizard() {
     setIsOpen(true);
     setCurrentStep(0);
 
-    const steps = [
+    const steps = demoMode ? [
       { text: "Scrubbing databases...", action: async () => { await resetDemoData(); } },
       { text: "Seeding Nova Finance organization...", action: async () => { await setupDemoData(); } },
       { text: "Deploying AI Agent smart contract wallets...", action: async () => { await fetchDbWallets(); } },
@@ -294,6 +292,47 @@ export function DemoWizard() {
       },
       { text: "Circuit Breaker engaged: Org Frozen status: TRUE.", action: async () => {} },
       { text: "Completed Enterprise Demo Run! Redirecting...", action: async () => { router.push("/dashboard"); } }
+    ] : [
+      { text: "Initializing Live Security Gateway...", action: async () => {} },
+      { text: "Verifying active smart contracts on Sepolia...", action: async () => { await fetchDbWallets(); } },
+      { text: "Prompting Live Cloud Billing Agent to run billing check...", action: async () => {
+          const id = await getFirstAgentId();
+          await fetch("/api/simulator/run", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ scenario: "safe_payment", agentId: id })
+          });
+        }
+      },
+      { text: "Prompting Live Treasury Agent to propose payout...", action: async () => {
+          const id = await getFirstAgentId();
+          await fetch("/api/simulator/run", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ scenario: "large_payment", agentId: id })
+          });
+        }
+      },
+      { text: "Triggering anomalous transaction block check...", action: async () => {
+          const id = await getFirstAgentId();
+          await fetch("/api/simulator/run", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ scenario: "unknown_wallet", agentId: id })
+          });
+        }
+      },
+      { text: "Simulating node drain threat on Live agents...", action: async () => {
+          const id = await getFirstAgentId();
+          await fetch("/api/simulator/run", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ scenario: "wallet_drain", agentId: id })
+          });
+        }
+      },
+      { text: "Global emergency circuit breaker active.", action: async () => {} },
+      { text: "Completed Live Demo run! Check your Sepolia ledger.", action: async () => { router.push("/dashboard"); } }
     ];
 
     for (let i = 0; i < steps.length; i++) {
@@ -327,20 +366,22 @@ export function DemoWizard() {
           disabled={scriptRunning}
           className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#2563EB] to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-xs font-bold shadow-glow flex items-center gap-1.5 transition disabled:opacity-50"
         >
-          ⚡ {scriptRunning ? "Enterprise Demo Running..." : "Launch Enterprise Demo"}
+          ⚡ {scriptRunning ? (demoMode ? "Enterprise Demo Running..." : "Live Demo Running...") : (demoMode ? "Launch Enterprise Demo" : "Launch Live Demo")}
         </button>
 
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="w-12 h-12 rounded-full bg-[#101827] border border-[#1f2937] hover:border-[#2563EB]/40 flex items-center justify-center text-xl shadow-glow transition"
-          title="Toggle Sandbox Demo Wizard"
-        >
-          🎓
-        </button>
+        {demoMode && (
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="w-12 h-12 rounded-full bg-[#101827] border border-[#1f2937] hover:border-[#2563EB]/40 flex items-center justify-center text-xl shadow-glow transition"
+            title="Toggle Sandbox Demo Wizard"
+          >
+            🎓
+          </button>
+        )}
       </div>
 
       <AnimatePresence>
-        {isOpen && (
+        {(demoMode || scriptRunning) && isOpen && (
           <motion.div
             initial={{ opacity: 0, y: 100, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -349,7 +390,7 @@ export function DemoWizard() {
           >
             <div className="flex justify-between items-center border-b border-[#1f2937]/80 pb-3 mb-3">
               <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-400">
-                AgentShield Sandbox Wizard
+                {demoMode ? "AgentShield Sandbox Wizard" : "AgentShield Live Monitor"}
               </h4>
               <button
                 onClick={() => setIsOpen(false)}
@@ -362,7 +403,9 @@ export function DemoWizard() {
             {scriptRunning ? (
               <div className="space-y-4 py-6 text-center">
                 <div className="w-8 h-8 border-4 border-[#2563EB]/30 border-t-[#2563EB] rounded-full animate-spin mx-auto" />
-                <p className="text-xs text-gray-400 font-mono">Running Automated Enterprise Demo</p>
+                <p className="text-xs text-gray-400 font-mono">
+                  {demoMode ? "Running Automated Sandbox Demo" : "Running Live Transaction Demo"}
+                </p>
                 <div className="p-3 bg-[#050816] rounded-xl border border-[#1f2937]/50 text-xs font-mono text-emerald-400">
                   {scriptProgress}
                 </div>

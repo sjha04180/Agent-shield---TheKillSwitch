@@ -46,7 +46,16 @@ export async function processTransactionRequest(
 
   // ── Step 1: Authentication ──────────────────────────────────────────────
   const agentId = payload.agentId;
-  const connectedAgent = await ConnectedAgent.findOne({ agentId });
+  
+  let connectedAgent = null;
+  const mongoose = await import("mongoose");
+  if (mongoose.Types.ObjectId.isValid(agentId)) {
+    connectedAgent = await ConnectedAgent.findOne({
+      $or: [{ agentId }, { linkedAgentId: new mongoose.Types.ObjectId(agentId) }]
+    });
+  } else {
+    connectedAgent = await ConnectedAgent.findOne({ agentId });
+  }
   
   if (!connectedAgent) {
     await AuditLog.create({

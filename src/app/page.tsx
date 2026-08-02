@@ -6,10 +6,10 @@ export default function LandingPage() {
       {/* Navigation Header */}
       <header className="border-b border-[#1f2937]/60 bg-[#050816]/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <a href="/" className="flex items-center gap-2">
             <img src="/icon.png" alt="AgentShield Logo" className="w-8 h-8 object-contain rounded-lg shadow-glow" />
             <span className="font-semibold text-lg tracking-wider text-white">Agent<span className="text-[#2563EB]">Shield</span></span>
-          </div>
+          </a>
           <nav className="hidden md:flex items-center gap-8 text-sm text-gray-400">
             <a href="#features" className="hover:text-white transition">Features</a>
             <a href="#architecture" className="hover:text-white transition">Architecture</a>
@@ -52,7 +52,7 @@ export default function LandingPage() {
             <a href="#architecture" className="px-6 py-3.5 rounded-xl bg-[#101827] hover:bg-[#101827]/80 text-white font-semibold border border-[#1f2937] transition text-center text-sm min-w-[150px]">
               View Architecture
             </a>
-            <a href="https://github.com/CodeCrafters/AgentShield" target="_blank" rel="noopener noreferrer" className="px-6 py-3.5 rounded-xl bg-[#101827] hover:bg-[#101827]/80 text-white font-semibold border border-[#1f2937] transition text-center text-sm min-w-[150px]">
+            <a href="https://github.com/sjha04180/Agent-shield-TheKillSwitch" target="_blank" rel="noopener noreferrer" className="px-6 py-3.5 rounded-xl bg-[#101827] hover:bg-[#101827]/80 text-white font-semibold border border-[#1f2937] transition text-center text-sm min-w-[150px]">
               GitHub
             </a>
           </div>

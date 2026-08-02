@@ -75,8 +75,16 @@ export const useAIStore = create<AIState>((set, get) => ({
   },
 
   sendMessage: async (content) => {
-    const active = get().activeConversation;
-    if (!active) return;
+    let active = get().activeConversation;
+    if (!active) {
+      active = {
+        _id: "temp_" + Date.now(),
+        title: "New Conversation",
+        messages: [],
+        updatedAt: new Date().toISOString()
+      };
+      set({ activeConversation: active });
+    }
 
     // Append user message immediately
     const userMsg: ChatMessage = {

@@ -84,6 +84,31 @@ export default function DashboardLayout({
     );
   };
 
+  const handleSwitchToLiveMode = async () => {
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          demoMode: false,
+          lyzrEnabled: true,
+          simulatorSpeed: "normal",
+          autoDemo: false,
+          blockchainSimulation: true,
+          geminiEnabled: true
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        addNotification("System Mode Switched", "Platform is now operating in Live Mode.", "info");
+        await fetchSettings();
+      }
+    } catch (e) {
+      console.error(e);
+      addNotification("Mode Shift Failed", "Could not synchronize settings.", "error");
+    }
+  };
+
   const handleLogout = async () => {
     await signOut({ redirect: false });
     router.push("/login");
@@ -94,11 +119,13 @@ export default function DashboardLayout({
       {/* Sidebar Navigation */}
       <aside className={`bg-[#101827] border-r border-[#1f2937]/80 flex flex-col transition-all duration-300 ${sidebarOpen ? 'w-64' : 'w-20'} relative z-30`}>
         {/* Logo / Header */}
-        <div className="h-16 border-b border-[#1f2937]/80 flex items-center px-5 gap-3">
-          <img src="/icon.png" alt="AgentShield Logo" className="w-8 h-8 object-contain rounded-lg shadow-glow flex-shrink-0" />
-          {sidebarOpen && (
-            <span className="font-semibold tracking-wider text-sm text-white">Agent<span className="text-[#2563EB]">Shield</span></span>
-          )}
+        <div className="h-16 border-b border-[#1f2937]/80 flex items-center px-5">
+          <Link href="/" className="flex items-center gap-3 hover:opacity-90 transition">
+            <img src="/icon.png" alt="AgentShield Logo" className="w-8 h-8 object-contain rounded-lg shadow-glow flex-shrink-0" />
+            {sidebarOpen && (
+              <span className="font-semibold tracking-wider text-sm text-white">Agent<span className="text-[#2563EB]">Shield</span></span>
+            )}
+          </Link>
         </div>
 
         {/* Navigation Items */}
@@ -428,6 +455,22 @@ export default function DashboardLayout({
 
         {/* View Content Port */}
         <main className="flex-1 p-6 relative">
+          {demoMode && (
+            <div className="mb-6 p-3 rounded-xl bg-amber-950/20 border border-amber-500/35 text-amber-400 text-xs flex items-center justify-between gap-4 shadow-glow-warning select-none">
+              <div className="flex items-center gap-2">
+                <span>⚠️</span>
+                <span>
+                  <strong>Demo Mode Active:</strong> You are currently in a simulated sandbox environment. Switch to <strong>Live Mode</strong> in Platform Settings to activate real Lyzr AI agents and actual blockchain transactions.
+                </span>
+              </div>
+              <button
+                onClick={handleSwitchToLiveMode}
+                className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg transition text-[10px] uppercase whitespace-nowrap shadow-glow-warning"
+              >
+                ⚡ Switch to Live Mode
+              </button>
+            </div>
+          )}
           {loading ? (
             <div className="absolute inset-0 flex items-center justify-center bg-[#050816]/50">
               <div className="w-8 h-8 border-4 border-[#2563EB]/30 border-t-[#2563EB] rounded-full animate-spin" />

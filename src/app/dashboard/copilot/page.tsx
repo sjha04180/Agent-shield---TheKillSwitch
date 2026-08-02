@@ -189,15 +189,10 @@ export default function CopilotPage() {
       <div className="w-64 bg-[#101827] border border-[#1f2937]/80 rounded-2xl p-5 space-y-6 shadow-glow">
         <div>
           <h3 className="text-xs font-bold text-white mb-3">Model selector</h3>
-          <select
-            value={selectedModel}
-            onChange={(e) => setSelectedModel(e.target.value)}
-            className="w-full px-2.5 py-2 rounded-xl bg-[#050816] border border-[#1f2937] text-white text-xs"
-          >
-            <option value="gemini-1.5-flash">Google Gemini 1.5 Flash</option>
-            <option value="gpt-4">OpenAI GPT-4 (Simulated)</option>
-            <option value="claude-3-5">Claude 3.5 (Simulated)</option>
-          </select>
+          <div className="w-full px-3 py-2 rounded-xl bg-[#050816] border border-[#2563EB]/30 text-xs text-[#2563EB] font-semibold flex items-center gap-1.5 shadow-glow-blue select-none">
+            <span className="w-2 h-2 rounded-full bg-[#2563EB] animate-pulse" />
+            Google Gemini 1.5 Flash (Active)
+          </div>
         </div>
 
         <div>

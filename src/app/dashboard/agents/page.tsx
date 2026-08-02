@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useWalletStore } from "@/store/useWalletStore";
 import { useNotificationStore } from "@/store/useNotificationStore";
+import { useSettingsStore } from "@/store/useSettingsStore";
 import { z } from "zod";
 
 interface DbAgent {
@@ -39,6 +40,7 @@ const createAgentSchema = z.object({
 export default function AgentsDashboard() {
   const { wallets, fetchDbWallets } = useWalletStore();
   const { addNotification } = useNotificationStore();
+  const { demoMode, fetchSettings } = useSettingsStore();
 
   const [agents, setAgents] = useState<DbAgent[]>([]);
   const [metrics, setMetrics] = useState<any>(null);
@@ -93,12 +95,13 @@ export default function AgentsDashboard() {
   // 1. Initial fetches & Web3 configs mounting
   useEffect(() => {
     fetchDbWallets();
+    fetchSettings();
     Promise.all([fetchAgents(), fetchMetrics()]).then(() => setLoading(false));
-  }, [fetchDbWallets]);
+  }, [fetchDbWallets, fetchSettings]);
 
   // 2. Client Side Triggered Simulator Tick loop (Every 8 seconds)
   useEffect(() => {
-    if (!tickActive) return;
+    if (!tickActive || !demoMode) return;
 
     const interval = setInterval(async () => {
       try {
@@ -124,7 +127,7 @@ export default function AgentsDashboard() {
     }, 8000);
 
     return () => clearInterval(interval);
-  }, [tickActive, addNotification]);
+  }, [tickActive, demoMode, addNotification]);
 
   // Handle agent status actions
   const triggerAgentAction = async (id: string, action: 'start' | 'pause' | 'freeze' | 'terminate') => {
@@ -142,6 +145,33 @@ export default function AgentsDashboard() {
       }
     } catch (e) {
       console.error(e);
+    }
+  };
+  
+  const triggerPropose = async (agentId: string, agentName: string) => {
+    addNotification("Agent Triggered", `${agentName} is analyzing transaction data and drafting proposal...`, "info");
+    try {
+      const res = await fetch("/api/simulator/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scenario: "safe_payment", agentId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        const emoji = data.data.decision === "Blocked" ? "🛑" : "✅";
+        addNotification(
+          `${emoji} Proposal Evaluated`,
+          `${agentName}'s proposed transaction was ${data.data.decision}. Reason: ${data.data.reason}`,
+          data.data.decision === "Blocked" ? "warning" : "success"
+        );
+        fetchAgents();
+        fetchMetrics();
+      } else {
+        addNotification("Evaluation Failed", data.error?.message || "Failed to trigger proposal", "error");
+      }
+    } catch (e) {
+      console.error(e);
+      addNotification("Connection Error", "Failed to connect to gateway", "error");
     }
   };
 
@@ -407,12 +437,23 @@ export default function AgentsDashboard() {
 
               {/* Action bar footer */}
               <div className="px-6 py-4 bg-[#050816]/50 border-t border-[#1f2937]/60 flex justify-between gap-2">
-                <Link
-                  href={`/dashboard/agents/${agent._id}`}
-                  className="px-3.5 py-1.5 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-xs font-semibold transition"
-                >
-                  Configure
-                </Link>
+                <div className="flex gap-2">
+                  <Link
+                    href={`/dashboard/agents/${agent._id}`}
+                    className="px-3.5 py-1.5 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-xs font-semibold transition"
+                  >
+                    Configure
+                  </Link>
+                  {agent.status === "active" && (
+                    <button
+                      onClick={() => triggerPropose(agent._id, agent.name)}
+                      className="px-3 py-1.5 bg-[#2563EB]/20 hover:bg-[#2563EB]/35 text-[#3b82f6] rounded-lg text-xs font-bold transition flex items-center gap-1"
+                      title="Trigger Agent to Propose a Transaction"
+                    >
+                      ⚡ Propose
+                    </button>
+                  )}
+                </div>
 
                 <div className="flex gap-2">
                   {agent.status === "active" ? (

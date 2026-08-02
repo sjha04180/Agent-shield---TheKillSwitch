@@ -16,7 +16,7 @@ export async function explainDecision(
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const prompt = `
     You are AgentShield's AI Copilot, a security assistant for an Enterprise AI Wallet Governance Platform.
     A transaction of ${amount} ${token} was recently evaluated by the Policy and Risk Engines.
