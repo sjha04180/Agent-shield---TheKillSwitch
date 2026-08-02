@@ -24,6 +24,8 @@ interface AdminState {
   users: UserAccount[];
   organizations: OrganizationInfo[];
   metrics: any | null;
+  demoMode: boolean;
+  lyzrEnabled: boolean;
   loading: boolean;
   error: string | null;
   
@@ -32,12 +34,16 @@ interface AdminState {
   fetchAdminDashboard: () => Promise<void>;
   toggleUserStatus: (id: string, status: "active" | "suspended") => Promise<boolean>;
   toggleOrgStatus: (id: string, status: "active" | "suspended") => Promise<boolean>;
+  fetchSettings: () => Promise<void>;
+  updateSettings: (demoMode: boolean, lyzrEnabled: boolean) => Promise<boolean>;
 }
 
 export const useAdminStore = create<AdminState>((set, get) => ({
   users: [],
   organizations: [],
   metrics: null,
+  demoMode: true,
+  lyzrEnabled: true,
   loading: false,
   error: null,
 
@@ -118,6 +124,39 @@ export const useAdminStore = create<AdminState>((set, get) => ({
         set((state) => ({
           organizations: state.organizations.map(o => o._id === id ? { ...o, status } : o)
         }));
+        return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  },
+
+  fetchSettings: async () => {
+    set({ loading: true, error: null });
+    try {
+      const res = await fetch("/api/admin/settings");
+      const data = await res.json();
+      if (data.success) {
+        set({ demoMode: data.data.demoMode, lyzrEnabled: data.data.lyzrEnabled, loading: false });
+      } else {
+        set({ error: data.error?.message || "Failed to load settings", loading: false });
+      }
+    } catch (e) {
+      set({ error: "Failed to connect to settings API", loading: false });
+    }
+  },
+
+  updateSettings: async (demoMode, lyzrEnabled) => {
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ demoMode, lyzrEnabled })
+      });
+      const data = await res.json();
+      if (data.success) {
+        set({ demoMode: data.data.demoMode, lyzrEnabled: data.data.lyzrEnabled });
         return true;
       }
       return false;

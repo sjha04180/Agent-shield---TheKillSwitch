@@ -7,6 +7,8 @@ import Link from "next/link";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useWalletStore } from "@/store/useWalletStore";
 import { useNotificationStore } from "@/store/useNotificationStore";
+import { useSettingsStore } from "@/store/useSettingsStore";
+import { DemoWizard } from "./components/DemoWizard";
 
 export default function DashboardLayout({
   children,
@@ -23,10 +25,44 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
 
+  const { demoMode, autoDemo, simulatorSpeed, fetchSettings } = useSettingsStore();
+
   useEffect(() => {
     fetchProfile();
     fetchDbWallets();
-  }, [fetchProfile, fetchDbWallets]);
+    fetchSettings();
+  }, [fetchProfile, fetchDbWallets, fetchSettings]);
+
+  // Client-side Auto Demo Loop handler
+  useEffect(() => {
+    if (!autoDemo || !demoMode) return;
+
+    const intervalMap = {
+      stress: 3000,
+      fast: 15000,
+      normal: 60000,
+    };
+    const intervalMs = intervalMap[simulatorSpeed] || 60000;
+
+    const runAutoTick = async () => {
+      try {
+        const res = await fetch("/api/simulator/tick", { method: "POST" });
+        const data = await res.json();
+        if (data.success && data.triggersCount > 0) {
+          addNotification(
+            "Auto Demo Activity",
+            `Simulated tick generated ${data.triggersCount} transaction proposals.`,
+            "success"
+          );
+        }
+      } catch (err) {
+        console.error("Auto demo tick failed:", err);
+      }
+    };
+
+    const timer = setInterval(runAutoTick, intervalMs);
+    return () => clearInterval(timer);
+  }, [autoDemo, demoMode, simulatorSpeed, addNotification]);
 
   // Master Kill Switch trigger - Freezes all wallets registered for this user
   const handleMasterKillSwitch = async () => {
@@ -311,6 +347,16 @@ export default function DashboardLayout({
           </div>
 
           <div className="flex items-center gap-4">
+            {/* Execution Mode Badge */}
+            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-semibold select-none ${
+              demoMode
+                ? "bg-emerald-950/30 border-emerald-500/25 text-emerald-400"
+                : "bg-blue-950/30 border-blue-500/25 text-blue-400"
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${demoMode ? "bg-emerald-400 animate-pulse" : "bg-blue-400 animate-pulse"}`} />
+              {demoMode ? "Demo Mode" : "Live Mode"}
+            </div>
+
             {/* Web3 MetaMask Connection Button */}
             {metaMaskConnected ? (
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#10B981]/10 border border-[#10B981]/30 text-xs font-semibold text-[#10B981]">
@@ -393,6 +439,8 @@ export default function DashboardLayout({
           )}
         </main>
       </div>
+      {/* Floating Demo Wizard */}
+      <DemoWizard />
     </div>
   );
 }

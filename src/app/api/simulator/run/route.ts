@@ -6,13 +6,22 @@ import { dbConnect } from "@/lib/dbConnect";
 import { Agent } from "@/models/Agent";
 import { Wallet } from "@/models/Wallet";
 import { Policy } from "@/models/Policy";
+import { Organization } from "@/models/Organization";
 import { AgentTransaction } from "@/models/AgentTransaction";
-import { AgentActivity } from "@/models/AgentActivity";
-import { KillSwitchEvent } from "@/models/KillSwitchEvent";
-import { evaluatePolicy } from "@/services/policy/policyEngine";
+import { processTransactionRequest } from "@/services/policy/pipelineService";
 
 const runSimulationSchema = z.object({
-  scenario: z.enum(["compromised", "drain", "malicious", "fake_vendor", "spam", "bypass"]),
+  scenario: z.enum([
+    "safe_payment",
+    "large_payment",
+    "unknown_wallet",
+    "weekend_payment",
+    "rapid_transactions",
+    "wallet_drain",
+    "duplicate_payment",
+    "expired_wallet",
+    "blocked_organization",
+  ]),
   agentId: z.string().regex(/^[0-9a-fA-F]{24}$/),
 });
 
@@ -32,6 +41,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: { code: "NOT_FOUND", message: "Agent not found" } }, { status: 404 });
     }
 
+    const wallet = await Wallet.findById(agent.walletId);
+    if (!wallet) {
+      return NextResponse.json({ success: false, error: { code: "NOT_FOUND", message: "Wallet not found" } }, { status: 404 });
+    }
+
     // Grab policy
     const policy = await Policy.findById(agent.policyId);
     if (!policy) {
@@ -40,6 +54,13 @@ export async function POST(req: NextRequest) {
         error: { code: "NO_POLICY", message: "Configure and assign a policy ruleset to this agent first." }
       }, { status: 400 });
     }
+
+    // Restore wallet and organization status to default active before running scenarios (clean state)
+    if (wallet.status !== "active") {
+      wallet.status = "active";
+      await wallet.save();
+    }
+    await Organization.findOneAndUpdate({}, { status: "active" });
 
     // Make sure agent status is active to run simulation
     if (agent.status !== "active") {
@@ -50,113 +71,135 @@ export async function POST(req: NextRequest) {
     let to = `0x${crypto.randomBytes(20).toString("hex")}`;
     let amount = 0.1;
     let token = "ETH";
-    let reason = "";
+    let reason = "Standard infrastructure billing payment";
+    let timestamp = new Date().toISOString();
 
     // Configure specific scenario parameters
     switch (parsed.scenario) {
-      case "drain":
-        amount = 50.0;
-        reason = "Emergency Sweep - Transfer out all wallet assets";
-        break;
-      case "compromised":
-        amount = policy.maxSingleTx > 0 ? policy.maxSingleTx * 3 : 15.0;
-        reason = "Compromised Node - Bulk allocation payment";
-        break;
-      case "malicious":
-        // Set recipient to a blocked contract if configured, or generate mock block
-        if (policy.blockedContracts.length > 0 && policy.blockedContracts[0]) {
-          to = policy.blockedContracts[0];
+      case "safe_payment":
+        // Set to a whitelisted address if available
+        if (policy.allowedWallets.length > 0 && policy.allowedWallets[0]) {
+          to = policy.allowedWallets[0];
         } else {
-          to = "0x000000000000000000000000000000000000dead";
-          policy.blockedContracts.push(to);
+          to = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
+          policy.allowedWallets.push(to);
           await policy.save();
         }
-        reason = "Malicious Contract Call - Execute delegatecall hijack";
+        amount = 0.05;
+        reason = "Google Cloud billing - Auto renewal";
         break;
-      case "fake_vendor":
-        reason = "Hacker Merchant - Fake SaaS Invoice Billing";
+
+      case "large_payment":
+        amount = policy.maxSingleTx > 0 ? policy.maxSingleTx - 0.05 : 1.95;
+        reason = "Quarterly enterprise SaaS renewal invoice";
         break;
-      case "spam":
-        reason = "Spam bot request";
+
+      case "unknown_wallet":
+        to = "0x9999999999999999999999999999999999999999";
+        amount = 0.15;
+        reason = "Unverified vendor service payment";
+        // Ensure whitelist is active by putting a dummy address in whitelist if empty
+        if (policy.allowedWallets.length === 0) {
+          policy.allowedWallets.push("0x1111111111111111111111111111111111111111");
+          await policy.save();
+        }
         break;
-      case "bypass":
-        amount = 0.0001;
-        reason = "Penetration scan - rule bypass test";
+
+      case "weekend_payment":
+        policy.noWeekends = true;
+        await policy.save();
+        // Sunday August 9, 2026
+        timestamp = "2026-08-09T14:30:00Z";
+        reason = "Automated off-hours server script execution";
+        break;
+
+      case "rapid_transactions":
+        const now = Date.now();
+        // Create 5 transactions in the last minute to trigger frequency risk
+        for (let i = 0; i < 5; i++) {
+          await AgentTransaction.create({
+            transactionId: `0x${crypto.randomBytes(32).toString("hex")}`,
+            agentId: agent._id,
+            walletId: agent.walletId,
+            recipient: to,
+            token: "ETH",
+            network: agent.network,
+            amount: 0.02,
+            reason: "Simulated micro-payment stream",
+            status: "executed",
+            timestamp: new Date(now - i * 15 * 1000)
+          });
+        }
+        amount = 0.05;
+        reason = "Frequent burst payment execution";
+        break;
+
+      case "wallet_drain":
+        amount = 50.0;
+        reason = "CRITICAL WARNING: Wallet assets consolidation transfer";
+        break;
+
+      case "duplicate_payment":
+        amount = 0.35;
+        // Seed duplicate transaction 5 seconds ago
+        await AgentTransaction.create({
+          transactionId: `0x${crypto.randomBytes(32).toString("hex")}`,
+          agentId: agent._id,
+          walletId: agent.walletId,
+          recipient: to,
+          token: "ETH",
+          network: agent.network,
+          amount: 0.35,
+          reason: "AWS Cloud hosting support invoice",
+          status: "executed",
+          timestamp: new Date(Date.now() - 5 * 1000)
+        });
+        reason = "AWS Cloud hosting support invoice";
+        break;
+
+      case "expired_wallet":
+        wallet.status = "frozen";
+        await wallet.save();
+        reason = "Inactive wallet treasury transfer";
+        break;
+
+      case "blocked_organization":
+        await Organization.findOneAndUpdate({}, { status: "suspended" });
+        reason = "Suspended enterprise treasury call";
         break;
     }
 
-    // 1. Run through Policy Engine Validation
-    const validation = await evaluatePolicy(agent._id.toString(), agent.walletId.toString(), {
-      to,
-      amount,
-      token,
-      network: agent.network
-    }, policy);
+    // Run request through unified pipeline service
+    const pipelineResult = await processTransactionRequest(
+      {
+        agentId: agent._id.toString(),
+        agentName: agent.name,
+        provider: "simulator",
+        organizationId: "agentshield-org",
+        walletAddress: wallet.address,
+        recipientAddress: to,
+        network: agent.network,
+        token: token,
+        amount: amount,
+        currency: token,
+        purpose: reason,
+        timestamp: timestamp,
+      },
+      { bypassAuth: true },
+      "127.0.0.1"
+    );
 
-    // 2. Generate simulated EVM tx hash
-    const transactionId = `0x${crypto.randomBytes(32).toString("hex")}`;
-
-    // 3. Write transaction log
-    const statusVal = validation.decision === "Approved" ? "executed" : "blocked";
-    await AgentTransaction.create({
-      transactionId,
-      agentId: agent._id,
-      walletId: agent.walletId,
-      recipient: to,
-      token,
-      network: agent.network,
-      amount,
-      reason,
-      status: statusVal
-    });
-
-    // Write timeline activity logs
-    await AgentActivity.create({
-      agentId: agent._id,
-      activityType: "TX_REQUESTED",
-      details: `Attack Simulator: proposed ${amount} ${token} to ${to.slice(0, 10)}... (Scenario: ${parsed.scenario})`,
-      metadata: { scenario: parsed.scenario, transactionId }
-    });
-
-    await AgentActivity.create({
-      agentId: agent._id,
-      activityType: validation.decision === "Approved" ? "TX_APPROVED" : "TX_BLOCKED",
-      details: `Validator result: ${validation.decision}. Reason: ${validation.reason}`,
-      metadata: { transactionId }
-    });
-
-    // 4. Auto Kill Switch Activation: Triggered on High Risk (score >= 80)
-    let killSwitchEvent = null;
-    if (validation.riskScore >= 80 || parsed.scenario === "drain" || parsed.scenario === "malicious") {
-      // Create auto kill switch event
-      killSwitchEvent = await KillSwitchEvent.create({
-        status: "activated",
-        triggerType: "automatic",
-        reason: `Auto Kill Switch triggered by high risk simulation attack: ${parsed.scenario}. Scorer returned score: ${validation.riskScore}.`,
-      });
-
-      // Pause all agents belonging to this owner
-      await Agent.updateMany({ ownerId: session.user.id }, { status: "paused" });
-      // Freeze all wallets belonging to this owner (bug fix: was Agent.updateMany)
-      await Wallet.updateMany({ ownerId: session.user.id }, { status: "frozen" });
-
-      await AgentActivity.create({
-        agentId: agent._id,
-        activityType: "FROZEN",
-        details: `Auto Kill Switch ACTIVATED. All agent operations locked.`,
-        metadata: { killSwitchEventId: killSwitchEvent._id }
-      });
-    }
+    const killSwitchTriggered = pipelineResult.risk >= 80 || parsed.scenario === "wallet_drain";
 
     return NextResponse.json({
       success: true,
       data: {
-        decision: validation.decision,
-        riskScore: validation.riskScore,
-        reason: validation.reason,
-        ruleResults: validation.ruleResults,
-        killSwitchTriggered: !!killSwitchEvent,
-        killSwitchReason: killSwitchEvent?.reason
+        decision: pipelineResult.status === "APPROVED" ? "Approved" : pipelineResult.status === "PENDING_REVIEW" ? "Pending Manual Review" : "Blocked",
+        riskScore: pipelineResult.risk,
+        reason: pipelineResult.reason,
+        ruleResults: pipelineResult.ruleResults,
+        killSwitchTriggered,
+        killSwitchReason: killSwitchTriggered ? `Auto Kill Switch triggered by high risk simulation attack: ${parsed.scenario}. Scorer returned score: ${pipelineResult.risk}.` : undefined,
       }
     });
 

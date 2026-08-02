@@ -5,6 +5,7 @@ import { useWalletStore } from "@/store/useWalletStore";
 import { useNotificationStore } from "@/store/useNotificationStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import Link from "next/link";
+import { motion } from "framer-motion";
 
 export default function DashboardIndex() {
   const { user } = useAuthStore();
@@ -30,7 +31,13 @@ export default function DashboardIndex() {
   ];
 
   return (
-    <div className="space-y-6 font-sans">
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 15 }}
+      transition={{ duration: 0.35, ease: "easeOut" }}
+      className="space-y-6 font-sans"
+    >
       {/* Welcome Banner */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -216,6 +223,6 @@ export default function DashboardIndex() {
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

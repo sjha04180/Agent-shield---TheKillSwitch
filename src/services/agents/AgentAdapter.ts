@@ -36,10 +36,21 @@ export interface IAgentAdapter {
   normalizeRequest(raw: unknown): AgentRequest;
 
   /**
+   * Normalize a provider-specific payload into the standard AgentRequest contract.
+   * Alias for normalizeRequest.
+   */
+  normalizePayload(raw: unknown): AgentRequest;
+
+  /**
    * Perform a liveness check. Should update lastSeen in ConnectedAgent.
    * Returns HeartbeatResult with measured latency.
    */
   heartbeat(): Promise<HeartbeatResult>;
+
+  /**
+   * Proactively request the AI agent to generate a transaction proposal.
+   */
+  generateTransaction(agentId: string, message: string): Promise<AgentRequest>;
 }
 
 // ─── Factory ──────────────────────────────────────────────────────────────

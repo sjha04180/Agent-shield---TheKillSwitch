@@ -1,123 +1,228 @@
 "use client";
 
-import React, { useState } from "react";
-import { useThemeStore } from "@/store/useThemeStore";
+import React, { useEffect, useState } from "react";
+import { useSettingsStore, SystemSettings } from "@/store/useSettingsStore";
 import { useWalletStore } from "@/store/useWalletStore";
 import { useNotificationStore } from "@/store/useNotificationStore";
 
 export default function SettingsPage() {
-  const { isDark, toggleTheme } = useThemeStore();
   const { metaMaskConnected, metaMaskAddress } = useWalletStore();
   const { addNotification } = useNotificationStore();
+  const {
+    demoMode,
+    lyzrEnabled,
+    simulatorSpeed,
+    autoDemo,
+    blockchainSimulation,
+    geminiEnabled,
+    loading,
+    fetchSettings,
+    updateSettings,
+    resetDemoData,
+    setupDemoData,
+  } = useSettingsStore();
 
-  // Local settings options
-  const [emailAlerts, setEmailAlerts] = useState(true);
-  const [toastAlerts, setToastAlerts] = useState(true);
-  const [anomalyDetections, setAnomalyDetections] = useState(true);
+  // Local form states
+  const [formDemoMode, setFormDemoMode] = useState(true);
+  const [formLyzrEnabled, setFormLyzrEnabled] = useState(true);
+  const [formSimulatorSpeed, setFormSimulatorSpeed] = useState<"normal" | "fast" | "stress">("normal");
+  const [formAutoDemo, setFormAutoDemo] = useState(false);
+  const [formBlockchainSim, setFormBlockchainSim] = useState(true);
+  const [formGeminiEnabled, setFormGeminiEnabled] = useState(true);
 
-  const handleSaveSettings = () => {
-    addNotification("Settings Saved", "Your workspace settings have been synchronized.", "success");
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
+
+  useEffect(() => {
+    setFormDemoMode(demoMode);
+    setFormLyzrEnabled(lyzrEnabled);
+    setFormSimulatorSpeed(simulatorSpeed);
+    setFormAutoDemo(autoDemo);
+    setFormBlockchainSim(blockchainSimulation);
+    setFormGeminiEnabled(geminiEnabled);
+  }, [demoMode, lyzrEnabled, simulatorSpeed, autoDemo, blockchainSimulation, geminiEnabled]);
+
+  const handleSaveSettings = async () => {
+    const success = await updateSettings({
+      demoMode: formDemoMode,
+      lyzrEnabled: formLyzrEnabled,
+      simulatorSpeed: formSimulatorSpeed,
+      autoDemo: formAutoDemo,
+      blockchainSimulation: formBlockchainSim,
+      geminiEnabled: formGeminiEnabled,
+    });
+
+    if (success) {
+      addNotification("Settings Synchronized", "Your workspace governance properties were updated.", "success");
+    } else {
+      addNotification("Sync Failed", "Failed to update governance settings on server.", "error");
+    }
   };
 
-  const handleDeleteAccount = () => {
-    const confirm = window.confirm("WARNING: Are you absolutely sure you want to delete your account? This action is permanent and will delete all governed policies and databases.");
-    if (confirm) {
-      alert("Delete account is protected. Please contact the platform administrator to revoke credentials.");
+  const handleResetDemo = async () => {
+    const confirm = window.confirm("WARNING: Are you sure you want to reset the Demo Environment? This will delete all organizations, wallets, agents, transactions, and metrics, and seed a clean sandbox organization.");
+    if (!confirm) return;
+
+    try {
+      const resetSuccess = await resetDemoData();
+      if (resetSuccess) {
+        const setupSuccess = await setupDemoData();
+        if (setupSuccess) {
+          addNotification("Demo Environment Reset", "Database scrubbed and seeded with new clean sandbox organization.", "success");
+          fetchSettings();
+        } else {
+          addNotification("Setup Error", "Database cleared but failed to re-seed demo organization.", "error");
+        }
+      } else {
+        addNotification("Reset Error", "Failed to scrub sandbox database.", "error");
+      }
+    } catch (err) {
+      addNotification("Connection Error", "Network timeout resetting demo.", "error");
     }
   };
 
   return (
     <div className="max-w-2xl space-y-6 font-sans">
-      {/* 1. Styling & Theme Settings */}
+      {/* 1. Execution Mode Configuration */}
       <div className="p-6 bg-[#101827] border border-[#1f2937]/80 rounded-2xl shadow-glow">
-        <h3 className="text-md font-bold text-white mb-2">Interface Customization</h3>
-        <p className="text-xs text-gray-500 mb-4">Set preferred visuals for displaying dashboards and tables.</p>
-        <div className="flex justify-between items-center py-2">
-          <div>
-            <span className="text-sm font-semibold text-white block">Dark First Mode</span>
-            <span className="text-xs text-gray-400">AgentShield forces high-contrast colors by default to preserve branding consistency.</span>
-          </div>
+        <h3 className="text-md font-bold text-white mb-1.5">Governance Execution Mode</h3>
+        <p className="text-xs text-gray-500 mb-4">Choose where transaction requests originate.</p>
+        
+        <div className="grid grid-cols-2 gap-4">
           <button
-            disabled
-            className="w-12 h-6 rounded-full bg-[#2563EB]/40 border border-[#2563EB]/50 flex items-center px-1 cursor-not-allowed opacity-75"
+            type="button"
+            onClick={() => setFormDemoMode(true)}
+            className={`p-4 rounded-xl border transition text-left flex flex-col justify-between h-24 ${
+              formDemoMode
+                ? "bg-emerald-950/20 border-emerald-500/40 text-white shadow-glow"
+                : "bg-[#050816] border-[#1f2937] text-gray-400 hover:border-gray-700"
+            }`}
           >
-            <div className="w-4 h-4 rounded-full bg-white translate-x-6" />
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-xs font-bold uppercase tracking-wider">Demo Mode</span>
+            </div>
+            <span className="text-[10px] leading-relaxed text-gray-400">
+              Run out-of-band policy simulator and wizard guides.
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFormDemoMode(false)}
+            className={`p-4 rounded-xl border transition text-left flex flex-col justify-between h-24 ${
+              !formDemoMode
+                ? "bg-blue-950/20 border-blue-500/40 text-white shadow-glow"
+                : "bg-[#050816] border-[#1f2937] text-gray-400 hover:border-gray-700"
+            }`}
+          >
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-400 animate-pulse" />
+              <span className="text-xs font-bold uppercase tracking-wider">Live Mode</span>
+            </div>
+            <span className="text-[10px] leading-relaxed text-gray-400">
+              Connect external AI agent workflows (Lyzr Gateway).
+            </span>
           </button>
         </div>
       </div>
 
-      {/* 2. Notification Rules */}
-      <div className="p-6 bg-[#101827] border border-[#1f2937]/80 rounded-2xl shadow-glow">
-        <h3 className="text-md font-bold text-white mb-2">Notification Center</h3>
-        <p className="text-xs text-gray-500 mb-4">Choose what security channels receive alerts for agent executions.</p>
-        
-        <div className="space-y-4">
+      {/* 2. Simulator Configurations */}
+      {formDemoMode && (
+        <div className="p-6 bg-[#101827] border border-[#1f2937]/80 rounded-2xl shadow-glow space-y-4">
+          <h3 className="text-md font-bold text-white mb-1.5">Demo Simulation Parameters</h3>
+
           <div className="flex justify-between items-center py-1">
             <div>
-              <span className="text-sm font-semibold text-white block">Real-time Browser Toasts</span>
-              <span className="text-xs text-gray-400">Receive flash popups on transaction validation failures.</span>
+              <span className="text-sm font-semibold text-white block">Auto Demo Loop</span>
+              <span className="text-xs text-gray-400">Automatically propose transactions continuously.</span>
             </div>
             <input
               type="checkbox"
-              checked={toastAlerts}
-              onChange={(e) => setToastAlerts(e.target.checked)}
+              checked={formAutoDemo}
+              onChange={(e) => setFormAutoDemo(e.target.checked)}
               className="w-4 h-4 bg-[#050816] rounded border-[#1f2937] text-[#2563EB]"
             />
           </div>
 
-          <div className="flex justify-between items-center py-1 border-t border-[#1f2937]/50 pt-3">
+          <div className="flex justify-between items-center py-2 border-t border-[#1f2937]/50 pt-3">
             <div>
-              <span className="text-sm font-semibold text-white block">Email Dispatch Reports</span>
-              <span className="text-xs text-gray-400">Dispatch logs daily summarizing blocked anomaly proposals.</span>
+              <span className="text-sm font-semibold text-white block">Simulator Frequency Speed</span>
+              <span className="text-xs text-gray-400">Adjust the interval for simulated proposals.</span>
             </div>
-            <input
-              type="checkbox"
-              checked={emailAlerts}
-              onChange={(e) => setEmailAlerts(e.target.checked)}
-              className="w-4 h-4 bg-[#050816] rounded border-[#1f2937] text-[#2563EB]"
-            />
-          </div>
-
-          <div className="flex justify-between items-center py-1 border-t border-[#1f2937]/50 pt-3">
-            <div>
-              <span className="text-sm font-semibold text-white block">Gemini Risk Warning Headers</span>
-              <span className="text-xs text-gray-400">Flag transaction payloads presenting high risk scores.</span>
-            </div>
-            <input
-              type="checkbox"
-              checked={anomalyDetections}
-              onChange={(e) => setAnomalyDetections(e.target.checked)}
-              className="w-4 h-4 bg-[#050816] rounded border-[#1f2937] text-[#2563EB]"
-            />
+            <select
+              value={formSimulatorSpeed}
+              onChange={(e) => setFormSimulatorSpeed(e.target.value as any)}
+              className="px-3 py-1.5 text-xs bg-[#050816] border border-[#1f2937] rounded-xl text-white outline-none focus:border-[#2563EB]"
+            >
+              <option value="normal">Normal (60s)</option>
+              <option value="fast">Fast Demo (15s)</option>
+              <option value="stress">Stress Test (3s)</option>
+            </select>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* 3. Connected Web3 accounts */}
-      <div className="p-6 bg-[#101827] border border-[#1f2937]/80 rounded-2xl shadow-glow">
-        <h3 className="text-md font-bold text-white mb-2">Web3 Credentials</h3>
-        <p className="text-xs text-gray-500 mb-4">Verification wallets linked to governance authorizations.</p>
-        <div className="flex justify-between items-center p-3 bg-[#050816] rounded-xl border border-[#1f2937]/80">
-          <span className="text-xs text-gray-400">MetaMask Link Status</span>
-          <span className={`text-xs font-mono font-bold uppercase ${metaMaskConnected ? 'text-[#10B981]' : 'text-gray-500'}`}>
-            {metaMaskConnected ? `Linked: ${metaMaskAddress?.slice(0, 8)}...` : 'Not connected'}
-          </span>
+      {/* 3. Core Governance Modules */}
+      <div className="p-6 bg-[#101827] border border-[#1f2937]/80 rounded-2xl shadow-glow space-y-4">
+        <h3 className="text-md font-bold text-white mb-1.5">Platform Integrity Modules</h3>
+
+        <div className="flex justify-between items-center py-1">
+          <div>
+            <span className="text-sm font-semibold text-white block">Blockchain Smart Contracts Sim</span>
+            <span className="text-xs text-gray-400">Simulate on-chain execution when Sepolia node is unavailable.</span>
+          </div>
+          <input
+            type="checkbox"
+            checked={formBlockchainSim}
+            onChange={(e) => setFormBlockchainSim(e.target.checked)}
+            className="w-4 h-4 bg-[#050816] rounded border-[#1f2937] text-[#2563EB]"
+          />
+        </div>
+
+        <div className="flex justify-between items-center py-1 border-t border-[#1f2937]/50 pt-3">
+          <div>
+            <span className="text-sm font-semibold text-white block">Lyzr AI Gateway Binding</span>
+            <span className="text-xs text-gray-400">Expose gateway APIs to incoming Lyzr SDK Webhooks.</span>
+          </div>
+          <input
+            type="checkbox"
+            checked={formLyzrEnabled}
+            onChange={(e) => setFormLyzrEnabled(e.target.checked)}
+            className="w-4 h-4 bg-[#050816] rounded border-[#1f2937] text-[#2563EB]"
+          />
+        </div>
+
+        <div className="flex justify-between items-center py-1 border-t border-[#1f2937]/50 pt-3">
+          <div>
+            <span className="text-sm font-semibold text-white block">Gemini Risk Reasoning Engine</span>
+            <span className="text-xs text-gray-400">Leverage Gemini model to explain blocked policy anomalies.</span>
+          </div>
+          <input
+            type="checkbox"
+            checked={formGeminiEnabled}
+            onChange={(e) => setFormGeminiEnabled(e.target.checked)}
+            className="w-4 h-4 bg-[#050816] rounded border-[#1f2937] text-[#2563EB]"
+          />
         </div>
       </div>
 
       {/* 4. Settings save and delete */}
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center border-t border-[#1f2937]/50 pt-6">
         <button
-          onClick={handleDeleteAccount}
+          onClick={handleResetDemo}
+          disabled={loading}
           className="px-4 py-2.5 rounded-xl bg-red-950/20 border border-red-500/35 hover:bg-red-950/40 text-red-400 text-xs font-semibold transition"
         >
-          🗑️ Delete Governance Account
+          🔄 Scrub & Reset Sandbox Demo
         </button>
         <button
           onClick={handleSaveSettings}
-          className="px-6 py-2.5 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-semibold transition shadow-glow"
+          disabled={loading}
+          className="px-6 py-2.5 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-semibold transition shadow-glow disabled:opacity-50"
         >
-          Save Configurations
+          {loading ? "Saving..." : "Save Configurations"}
         </button>
       </div>
     </div>

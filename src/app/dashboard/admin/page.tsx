@@ -4,11 +4,28 @@ import React, { useEffect } from "react";
 import { useAdminStore } from "@/store/useAdminStore";
 
 export default function AdminDashboardPage() {
-  const { metrics, loading, fetchAdminDashboard } = useAdminStore();
+  const { 
+    metrics, 
+    loading, 
+    fetchAdminDashboard,
+    demoMode,
+    lyzrEnabled,
+    fetchSettings,
+    updateSettings
+  } = useAdminStore();
 
   useEffect(() => {
     fetchAdminDashboard();
+    fetchSettings();
   }, []);
+
+  const handleToggleDemoMode = async () => {
+    await updateSettings(!demoMode, lyzrEnabled);
+  };
+
+  const handleToggleLyzr = async () => {
+    await updateSettings(demoMode, !lyzrEnabled);
+  };
 
   return (
     <div className="space-y-6 font-sans">
@@ -83,9 +100,27 @@ export default function AdminDashboardPage() {
                   <span>Mongoose Host:</span>
                   <span className="text-emerald-400 font-semibold">Healthy</span>
                 </li>
-                <li className="flex justify-between pb-2">
+                <li className="flex justify-between border-b border-[#1f2937]/50 pb-2">
                   <span>Security Rulesets:</span>
                   <span className="text-white font-mono">{metrics.stats.blockedTransactions + metrics.stats.successfulTransactions} evaluated</span>
+                </li>
+                <li className="flex items-center justify-between border-b border-[#1f2937]/50 pb-2 pt-1">
+                  <span>Demo Mode:</span>
+                  <button 
+                    onClick={handleToggleDemoMode}
+                    className={`w-10 h-5 rounded-full flex items-center px-1 transition duration-200 ${demoMode ? "bg-emerald-600 justify-end" : "bg-gray-700 justify-start"}`}
+                  >
+                    <div className="w-3.5 h-3.5 rounded-full bg-white shadow-md" />
+                  </button>
+                </li>
+                <li className="flex items-center justify-between pb-1 pt-1">
+                  <span>Lyzr Adapter:</span>
+                  <button 
+                    onClick={handleToggleLyzr}
+                    className={`w-10 h-5 rounded-full flex items-center px-1 transition duration-200 ${lyzrEnabled ? "bg-emerald-600 justify-end" : "bg-gray-700 justify-start"}`}
+                  >
+                    <div className="w-3.5 h-3.5 rounded-full bg-white shadow-md" />
+                  </button>
                 </li>
               </ul>
             </div>

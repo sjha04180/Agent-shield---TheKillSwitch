@@ -2,11 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { dbConnect } from "@/lib/dbConnect";
 import { Agent } from "@/models/Agent";
-import { AgentActivity } from "@/models/AgentActivity";
-import { AgentTransaction } from "@/models/AgentTransaction";
-import { AgentMetrics } from "@/models/AgentMetrics";
+import { Wallet } from "@/models/Wallet";
+import { processTransactionRequest } from "@/services/policy/pipelineService";
 
-// Predefined vendors library
 interface Vendor {
   name: string;
   category: string;
@@ -43,6 +41,10 @@ export async function POST(req: NextRequest) {
 
       triggersCount++;
 
+      // Load wallet to get its address
+      const wallet = await Wallet.findById(agent.walletId);
+      if (!wallet) continue;
+
       // 2. Select random vendor
       const vendor = VENDORS[Math.floor(Math.random() * VENDORS.length)]!;
       
@@ -52,98 +54,40 @@ export async function POST(req: NextRequest) {
       const recipient = `0x${crypto.randomBytes(20).toString("hex")}`;
       const reason = `${vendor.name} - ${vendor.defaultReason}`;
 
-      // Calculate amount relative to limit
       let amount = 0;
       if (token === "ETH") {
         amount = Number((Math.random() * 0.25).toFixed(4));
       } else {
-        // e.g. USDC
         amount = Math.round(Math.random() * 300) + 10;
       }
 
-      // 4. Decide transaction outcome
-      // Roll a 20% chance that it gets BLOCKED (triggers policy anomaly)
-      const isAnomalous = Math.random() < 0.2;
-      const isExceeded = amount > agent.spendingLimit && agent.spendingLimit > 0;
-      
-      let status: 'executed' | 'blocked' = 'executed';
-      let blockReason = "";
-
-      if (isAnomalous) {
-        status = 'blocked';
-        blockReason = "Anomalous recipient address flagged by Gemini risk guard.";
-      } else if (isExceeded) {
-        status = 'blocked';
-        blockReason = `Transaction amount (${amount} ${token}) exceeds default limit bounds (${agent.spendingLimit} ${token}).`;
-      }
-
-      // Generate simulated tx hash
-      const transactionId = `0x${crypto.randomBytes(32).toString("hex")}`;
-
-      // Create transaction log
-      const tx = await AgentTransaction.create({
-        transactionId,
-        agentId: agent._id,
-        walletId: agent.walletId,
-        recipient,
-        token,
-        network,
-        amount,
-        reason,
-        status,
-      });
-
-      // Write activity entries
-      await AgentActivity.create({
-        agentId: agent._id,
-        activityType: "TX_REQUESTED",
-        details: `Simulated transaction proposed: ${amount} ${token} to ${vendor.name} for ${vendor.defaultReason}`,
-        metadata: { transactionId, amount, token, vendor: vendor.name },
-      });
-
-      if (status === 'blocked') {
-        await AgentActivity.create({
-          agentId: agent._id,
-          activityType: "TX_BLOCKED",
-          details: `Transaction BLOCKED: ${blockReason}`,
-          metadata: { transactionId, blockReason },
-        });
-      } else {
-        await AgentActivity.create({
-          agentId: agent._id,
-          activityType: "TX_APPROVED",
-          details: `Transaction APPROVED & EXECUTED. Hash: ${transactionId.slice(0, 10)}...`,
-          metadata: { transactionId },
-        });
-      }
-
-      // 5. Update agent metrics
-      const metrics = await AgentMetrics.findOne({ agentId: agent._id });
-      if (metrics) {
-        metrics.requestsToday += 1;
-        if (status === 'blocked') {
-          metrics.blockedCount += 1;
-        } else {
-          metrics.approvedCount += 1;
-        }
-        
-        const totalRequests = metrics.requestsToday;
-        metrics.successRate = Number(((metrics.approvedCount / totalRequests) * 100).toFixed(1));
-        
-        // Recalculate average request size
-        const currentTotal = (metrics.averageRequestAmount * (totalRequests - 1)) + amount;
-        metrics.averageRequestAmount = Number((currentTotal / totalRequests).toFixed(4));
-        
-        await metrics.save();
-      }
+      // 4. Run through centralized transaction pipeline
+      const pipelineResult = await processTransactionRequest(
+        {
+          agentId: agent._id.toString(),
+          agentName: agent.name,
+          provider: "simulator",
+          organizationId: "agentshield-org",
+          walletAddress: wallet.address,
+          recipientAddress: recipient,
+          network: network,
+          token: token,
+          amount: amount,
+          currency: token,
+          purpose: reason,
+          timestamp: new Date().toISOString(),
+        },
+        { bypassAuth: true },
+        "127.0.0.1"
+      );
 
       tickResults.push({
         agentName: agent.name,
         vendor: vendor.name,
         amount,
         token,
-        status,
-        blockReason
+        status: pipelineResult.status,
+        reason: pipelineResult.reason,
       });
     }
 
@@ -151,7 +95,7 @@ export async function POST(req: NextRequest) {
       success: true,
       message: "Simulation tick executed successfully",
       triggersCount,
-      tickResults
+      tickResults,
     });
 
   } catch (error) {

@@ -23,7 +23,7 @@ interface PolicyValidationResult {
 export async function evaluatePolicy(
   agentId: string,
   walletId: string,
-  payload: { to: string; amount: number; token: string; data?: string; network: string },
+  payload: { to: string; amount: number; token: string; data?: string; network: string; geoCountry?: string; timestamp?: string },
   policy: IPolicy
 ): Promise<PolicyValidationResult> {
   await dbConnect();
@@ -169,6 +169,37 @@ export async function evaluatePolicy(
     }
   }
 
+  // 4.2 Weekly Spending Limit Check
+  if (policy.maxWeeklySpent > 0) {
+    const startOfWeek = new Date();
+    const day = startOfWeek.getUTCDay();
+    startOfWeek.setUTCDate(startOfWeek.getUTCDate() - day);
+    startOfWeek.setUTCHours(0, 0, 0, 0);
+
+    const executedThisWeek = await AgentTransaction.find({
+      agentId,
+      status: "executed",
+      timestamp: { $gte: startOfWeek },
+    });
+
+    const weeklySpentSum = executedThisWeek.reduce((sum, tx) => sum + tx.amount, 0);
+    if (weeklySpentSum + payload.amount > policy.maxWeeklySpent) {
+      ruleResults.push({
+        ruleName: "Max Weekly Limit",
+        status: "FAIL",
+        message: `Exceeds weekly spending limit (${policy.maxWeeklySpent}). Current spent this week: ${formatAmount(weeklySpentSum)}`,
+      });
+      finalDecision = "Blocked";
+      overallReason = "Weekly spending limit breached.";
+    } else {
+      ruleResults.push({
+        ruleName: "Max Weekly Limit",
+        status: "PASS",
+        message: `Weekly spending within bounds. Current spent: ${formatAmount(weeklySpentSum)}`,
+      });
+    }
+  }
+
   // 5. Whitelist / Blacklist Address Validation
   const targetAddress = payload.to.toLowerCase();
   const isBlockedAddress = policy.blockedWallets
@@ -229,8 +260,44 @@ export async function evaluatePolicy(
     });
   }
 
+  // 6.1 Token Whitelist / Blacklist Validation
+  const upperToken = payload.token.toUpperCase();
+  const isBlockedToken = policy.blockedTokens
+    .map((t) => t.toUpperCase())
+    .includes(upperToken);
+
+  if (isBlockedToken) {
+    ruleResults.push({
+      ruleName: "Token Validator",
+      status: "FAIL",
+      message: `Token ${upperToken} is explicitly blacklisted.`,
+    });
+    finalDecision = "Blocked";
+    overallReason = "Blacklisted transaction token.";
+  } else {
+    const isWhitelistedToken = policy.allowedTokens
+      .map((t) => t.toUpperCase())
+      .includes(upperToken);
+    if (policy.allowedTokens.length > 0 && !isWhitelistedToken) {
+      ruleResults.push({
+        ruleName: "Token Validator",
+        status: "FAIL",
+        message: `Token ${upperToken} is not whitelisted.`,
+      });
+      finalDecision = "Blocked";
+      overallReason = "Token not whitelisted.";
+    } else {
+      ruleResults.push({
+        ruleName: "Token Validator",
+        status: "PASS",
+        message: "Transaction token is authorized.",
+      });
+    }
+  }
+
   // 7. Time Restrictions Verification
-  const currentHour = new Date().getUTCHours();
+  const referenceDate = payload.timestamp ? new Date(payload.timestamp) : new Date();
+  const currentHour = referenceDate.getUTCHours();
   if (policy.businessHoursOnly) {
     const isOutsideHours =
       currentHour < policy.businessStartHour || currentHour >= policy.businessEndHour;
@@ -253,7 +320,7 @@ export async function evaluatePolicy(
 
   // 7.1 Weekend Restriction
   if (policy.noWeekends) {
-    const currentDay = new Date().getUTCDay(); // 0 is Sunday, 6 is Saturday
+    const currentDay = referenceDate.getUTCDay(); // 0 is Sunday, 6 is Saturday
     if (currentDay === 0 || currentDay === 6) {
       ruleResults.push({
         ruleName: "Weekend Restriction",
@@ -269,6 +336,25 @@ export async function evaluatePolicy(
         message: "Current day is a weekday.",
       });
     }
+  }
+
+  // 7.2 Geographic Restriction (Future-ready)
+  const clientCountry = payload.geoCountry || "US";
+  const isGeoBlocked = clientCountry === "KP" || clientCountry === "IR" || clientCountry === "SY";
+  if (isGeoBlocked) {
+    ruleResults.push({
+      ruleName: "Geographic Restriction",
+      status: "FAIL",
+      message: `Transaction proposed from blocked sanction country code: ${clientCountry}.`,
+    });
+    finalDecision = "Blocked";
+    overallReason = "Geographic policy sanction block.";
+  } else {
+    ruleResults.push({
+      ruleName: "Geographic Restriction",
+      status: "PASS",
+      message: `Country origin (${clientCountry}) is authorized.`,
+    });
   }
 
   // 8. Manual Override Flag

@@ -129,3 +129,36 @@ export async function executeTransaction(
     throw error;
   }
 }
+
+/**
+ * Generates an EIP-191 compliant co-signing signature for the TransactionExecutor contract.
+ */
+export async function signCoSigningPayload(
+  agentAddress: string,
+  walletAddress: string,
+  targetAddress: string,
+  amountEth: number,
+  dataHex: string,
+  nonce: number,
+  deadline: number,
+  privateKey: string
+): Promise<string> {
+  const valueWei = ethers.parseEther(amountEth.toString());
+  const messageHash = ethers.solidityPackedKeccak256(
+    ["address", "address", "address", "uint256", "bytes", "uint256", "uint256"],
+    [
+      agentAddress,
+      walletAddress,
+      targetAddress,
+      valueWei,
+      dataHex || "0x",
+      nonce,
+      deadline
+    ]
+  );
+  
+  const wallet = new ethers.Wallet(privateKey);
+  const signature = await wallet.signMessage(ethers.getBytes(messageHash));
+  return signature;
+}
+

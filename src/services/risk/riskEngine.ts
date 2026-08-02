@@ -84,6 +84,45 @@ export async function calculateRiskScore(
     factors.push(`Frequent policy violation blocks (${recentFailuresCount} in the last 10 minutes)`);
   }
 
+  // 7. Wallet Trust Score & Reputation Checks
+  const successfulTxCount = await AgentTransaction.countDocuments({
+    recipient: addressLower,
+    status: "executed",
+  });
+  if (successfulTxCount === 0) {
+    score += 20;
+    factors.push("Recipient address has no prior successful transaction history on the platform (Low Trust Score)");
+  }
+
+  const blockedTxCount = await AgentTransaction.countDocuments({
+    recipient: addressLower,
+    status: "blocked",
+  });
+  if (blockedTxCount >= 2) {
+    score += 30;
+    factors.push(`Recipient has a history of prior security policy blocks (${blockedTxCount} failures — Poor Reputation)`);
+  }
+
+  // 8. High-Value Transfers Check
+  const isHighValue = payload.token.toUpperCase() === "ETH" ? payload.amount > 10.0 : payload.amount > 1000.0;
+  if (isHighValue) {
+    score += 25;
+    factors.push(`Autonomous transfer amount is unusually large (${payload.amount} ${payload.token} — High-Value Indicator)`);
+  }
+
+  // 9. Repeated Transaction Loop (Spam bot detection)
+  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+  const matchingTxCount = await AgentTransaction.countDocuments({
+    agentId,
+    recipient: addressLower,
+    amount: payload.amount,
+    timestamp: { $gte: fiveMinutesAgo },
+  });
+  if (matchingTxCount >= 3) {
+    score += 35;
+    factors.push(`Transaction duplication loop detected (${matchingTxCount} identical transfers proposed in the last 5 minutes)`);
+  }
+
   // Cap score at 100
   const finalScore = Math.min(100, Math.max(0, score));
   

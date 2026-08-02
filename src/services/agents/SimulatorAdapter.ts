@@ -253,6 +253,10 @@ export class SimulatorAdapter implements IAgentAdapter {
     return this.normalizeRequest(raw);
   }
 
+  normalizePayload(raw: unknown): AgentRequest {
+    return this.normalizeRequest(raw);
+  }
+
   async heartbeat(): Promise<HeartbeatResult> {
     return {
       agentId: "simulator-adapter",
@@ -260,6 +264,17 @@ export class SimulatorAdapter implements IAgentAdapter {
       latencyMs: Math.floor(Math.random() * 5), // simulator is always local
       status: "online",
     };
+  }
+
+  async generateTransaction(agentId: string, message: string): Promise<AgentRequest> {
+    const profile = SIMULATOR_AGENTS.find((a) => a.agentId === agentId);
+    if (!profile) throw new Error(`Simulator agent profile not found for ID: ${agentId}`);
+    
+    // Construct simulated payload
+    return this.normalizeRequest({
+      agentId,
+      purpose: message || "Simulated transaction task request",
+    });
   }
 
   /**
