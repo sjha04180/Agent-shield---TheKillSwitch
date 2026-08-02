@@ -84,4 +84,15 @@ export class FutureAdapter implements IAgentAdapter {
       status: this.connected ? "online" : "offline",
     };
   }
+
+  normalizePayload(raw: unknown): AgentRequest {
+    return this.normalizeRequest(raw);
+  }
+
+  async generateTransaction(agentId: string, message: string): Promise<AgentRequest> {
+    return this.normalizeRequest({
+      agentId,
+      purpose: message || "Future provider transaction proposal stub",
+    });
+  }
 }

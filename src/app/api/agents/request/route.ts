@@ -4,6 +4,7 @@ import { dbConnect } from "@/lib/dbConnect";
 import { getAdapter } from "@/services/agents/AgentAdapter";
 import { guardRequest } from "@/services/agents/promptGuard";
 import { processTransactionRequest } from "@/services/policy/pipelineService";
+import { AgentCredentials } from "@/models/AgentCredentials";
 
 const RequestSchema = z.object({
   agentId: z.string().min(1),
@@ -44,7 +45,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. Parse request body
+    // 2. Query AgentCredentials validation check
+    const credential = await AgentCredentials.findOne({ agentId, status: "active" });
+    if (!credential || credential.agentToken !== agentToken) {
+      return NextResponse.json(
+        {
+          status: "BLOCKED",
+          risk: 100,
+          reason: "Unauthorized: Invalid agentId or agentToken.",
+        },
+        { status: 401 }
+      );
+    }
+
+    // 3. Parse request body
     const body = await req.json();
     const parsedBody = RequestSchema.safeParse(body);
     if (!parsedBody.success) {
@@ -59,7 +73,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Prompt injection guard
+    // 4. Prompt injection guard
     const guard = guardRequest(
       parsedBody.data.purpose ?? "",
       parsedBody.data.metadata as Record<string, unknown> | undefined
@@ -76,7 +90,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. Normalize via provider adapter
+    // 5. Normalize via provider adapter
     const provider = parsedBody.data.provider;
     const adapter = await getAdapter(provider);
     await adapter.connect();
@@ -100,10 +114,10 @@ export async function POST(req: NextRequest) {
       await adapter.disconnect();
     }
 
-    // 5. Route through unified pipeline service
+    // 6. Route through unified pipeline service
     const result = await processTransactionRequest(
       normalizedPayload,
-      { token: agentToken },
+      { token: agentToken, bypassAuth: true }, // Auth check is already performed at step 2 above
       ip
     );
 

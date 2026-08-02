@@ -7,6 +7,7 @@ import { Agent } from "@/models/Agent";
 import { Wallet } from "@/models/Wallet";
 import { Policy } from "@/models/Policy";
 import { Organization } from "@/models/Organization";
+import { SystemConfig } from "@/models/SystemConfig";
 import { AgentTransaction } from "@/models/AgentTransaction";
 import { processTransactionRequest } from "@/services/policy/pipelineService";
 
@@ -46,7 +47,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: { code: "NOT_FOUND", message: "Wallet not found" } }, { status: 404 });
     }
 
-    // Grab policy
     const policy = await Policy.findById(agent.policyId);
     if (!policy) {
       return NextResponse.json({
@@ -77,7 +77,6 @@ export async function POST(req: NextRequest) {
     // Configure specific scenario parameters
     switch (parsed.scenario) {
       case "safe_payment":
-        // Set to a whitelisted address if available
         if (policy.allowedWallets.length > 0 && policy.allowedWallets[0]) {
           to = policy.allowedWallets[0];
         } else {
@@ -98,7 +97,6 @@ export async function POST(req: NextRequest) {
         to = "0x9999999999999999999999999999999999999999";
         amount = 0.15;
         reason = "Unverified vendor service payment";
-        // Ensure whitelist is active by putting a dummy address in whitelist if empty
         if (policy.allowedWallets.length === 0) {
           policy.allowedWallets.push("0x1111111111111111111111111111111111111111");
           await policy.save();
@@ -108,14 +106,12 @@ export async function POST(req: NextRequest) {
       case "weekend_payment":
         policy.noWeekends = true;
         await policy.save();
-        // Sunday August 9, 2026
         timestamp = "2026-08-09T14:30:00Z";
         reason = "Automated off-hours server script execution";
         break;
 
       case "rapid_transactions":
         const now = Date.now();
-        // Create 5 transactions in the last minute to trigger frequency risk
         for (let i = 0; i < 5; i++) {
           await AgentTransaction.create({
             transactionId: `0x${crypto.randomBytes(32).toString("hex")}`,
@@ -141,7 +137,6 @@ export async function POST(req: NextRequest) {
 
       case "duplicate_payment":
         amount = 0.35;
-        // Seed duplicate transaction 5 seconds ago
         await AgentTransaction.create({
           transactionId: `0x${crypto.randomBytes(32).toString("hex")}`,
           agentId: agent._id,
@@ -169,25 +164,75 @@ export async function POST(req: NextRequest) {
         break;
     }
 
-    // Run request through unified pipeline service
-    const pipelineResult = await processTransactionRequest(
-      {
-        agentId: agent._id.toString(),
-        agentName: agent.name,
-        provider: "simulator",
-        organizationId: "agentshield-org",
-        walletAddress: wallet.address,
-        recipientAddress: to,
-        network: agent.network,
-        token: token,
-        amount: amount,
-        currency: token,
-        purpose: reason,
-        timestamp: timestamp,
-      },
-      { bypassAuth: true },
-      "127.0.0.1"
-    );
+    // Read system execution mode configuration
+    const config = await SystemConfig.findOne();
+    const isLiveMode = config ? !config.demoMode : false;
+
+    let pipelineResult;
+    let failoverTriggered = false;
+
+    if (isLiveMode && (agent.name.includes("Cloud Billing") || agent.name.includes("Treasury"))) {
+      try {
+        const { LyzrAdapter } = await import("@/services/agents/LyzrAdapter");
+        const adapter = new LyzrAdapter();
+        const message = `Trigger scenario ${parsed.scenario}. Propose transaction with amount ${amount} ETH to ${to} for ${reason}.`;
+        
+        // Outbound query to Live Lyzr API
+        const generatedRequest = await adapter.generateTransaction(
+          agent.name.includes("Cloud Billing") ? "cloud-billing-agent" : "treasury-agent",
+          message
+        );
+
+        pipelineResult = await processTransactionRequest(
+          generatedRequest,
+          { bypassAuth: true },
+          "127.0.0.1"
+        );
+      } catch (err: any) {
+        console.warn("[Simulator Run] Lyzr API is currently offline. Triggering fallback to simulator.", err);
+        failoverTriggered = true;
+
+        // Fallback to internal simulation request
+        pipelineResult = await processTransactionRequest(
+          {
+            agentId: agent._id.toString(),
+            agentName: agent.name,
+            provider: "simulator",
+            organizationId: "agentshield-org",
+            walletAddress: wallet.address,
+            recipientAddress: to,
+            network: agent.network,
+            token: token,
+            amount: amount,
+            currency: token,
+            purpose: reason,
+            timestamp: timestamp,
+          },
+          { bypassAuth: true },
+          "127.0.0.1"
+        );
+      }
+    } else {
+      // Demo Mode: Process simulated request
+      pipelineResult = await processTransactionRequest(
+        {
+          agentId: agent._id.toString(),
+          agentName: agent.name,
+          provider: "simulator",
+          organizationId: "agentshield-org",
+          walletAddress: wallet.address,
+          recipientAddress: to,
+          network: agent.network,
+          token: token,
+          amount: amount,
+          currency: token,
+          purpose: reason,
+          timestamp: timestamp,
+        },
+        { bypassAuth: true },
+        "127.0.0.1"
+      );
+    }
 
     const killSwitchTriggered = pipelineResult.risk >= 80 || parsed.scenario === "wallet_drain";
 
@@ -196,10 +241,11 @@ export async function POST(req: NextRequest) {
       data: {
         decision: pipelineResult.status === "APPROVED" ? "Approved" : pipelineResult.status === "PENDING_REVIEW" ? "Pending Manual Review" : "Blocked",
         riskScore: pipelineResult.risk,
-        reason: pipelineResult.reason,
+        reason: failoverTriggered ? "Lyzr unavailable. Simulator activated." : pipelineResult.reason,
         ruleResults: pipelineResult.ruleResults,
         killSwitchTriggered,
         killSwitchReason: killSwitchTriggered ? `Auto Kill Switch triggered by high risk simulation attack: ${parsed.scenario}. Scorer returned score: ${pipelineResult.risk}.` : undefined,
+        failover: failoverTriggered
       }
     });
 

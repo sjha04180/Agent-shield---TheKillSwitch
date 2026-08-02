@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/dbConnect";
 import { ConnectedAgent } from "@/models/ConnectedAgent";
-import crypto from "crypto";
+import { AgentCredentials } from "@/models/AgentCredentials";
 
 export async function GET(req: NextRequest) {
   try {
@@ -16,23 +16,21 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const agent = await ConnectedAgent.findOne({ agentId });
-    if (!agent) {
+    // 1. Verify credentials via AgentCredentials collection
+    const credential = await AgentCredentials.findOne({ agentId, status: "active" });
+    if (!credential || credential.agentToken !== agentToken) {
       return NextResponse.json(
-        { success: false, error: "Agent not found" },
-        { status: 404 }
+        { success: false, error: "Unauthorized: Invalid credentials" },
+        { status: 401 }
       );
     }
 
-    const providedHash = crypto
-      .createHash("sha256")
-      .update(agentToken)
-      .digest("hex");
-    
-    if (providedHash !== agent.secretTokenHash) {
+    // 2. Fetch connected agent document
+    const agent = await ConnectedAgent.findOne({ agentId });
+    if (!agent) {
       return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 }
+        { success: false, error: "Agent connected config missing" },
+        { status: 404 }
       );
     }
 
@@ -53,7 +51,6 @@ export async function GET(req: NextRequest) {
 
     agent.lastSeen = now;
     agent.status = "online";
-    // Real latency would be measured by the provider adapter, but here we just record the ping time
     agent.latencyMs = Math.floor(Math.random() * 20) + 10; 
     
     await agent.save();
@@ -67,8 +64,9 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error) {
+    console.error("[GET /api/agents/heartbeat] Error:", error);
     return NextResponse.json(
-      { success: false, error: "Heartbeat failed" },
+      { success: false, error: "Heartbeat check failed" },
       { status: 500 }
     );
   }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import crypto from "crypto";
 import { dbConnect } from "@/lib/dbConnect";
 import { ConnectedAgent } from "@/models/ConnectedAgent";
+import { AgentCredentials } from "@/models/AgentCredentials";
 import { AuditLog } from "@/models/AuditLog";
 
 export async function POST(req: NextRequest) {
@@ -18,43 +18,27 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // 1. Verify credentials via AgentCredentials collection
+    const credential = await AgentCredentials.findOne({ agentId, status: "active" });
+    if (!credential || credential.agentToken !== secretToken) {
+      await AuditLog.create({
+        action: "AGENT_AUTH_FAILED",
+        details: `Failed authentication attempt for agentId: ${agentId}`,
+        ipAddress: ip,
+        metadata: { agentId },
+      });
+      return NextResponse.json(
+        { success: false, error: "Invalid credentials or agent not active" },
+        { status: 401 }
+      );
+    }
+
+    // 2. Load connected agent state
     const agent = await ConnectedAgent.findOne({ agentId });
     if (!agent) {
-      await AuditLog.create({
-        action: "AGENT_AUTH_FAILED",
-        details: `Failed authentication attempt for unknown agentId: ${agentId}`,
-        ipAddress: ip,
-        metadata: { agentId },
-      });
       return NextResponse.json(
-        { success: false, error: "Agent not registered" },
-        { status: 401 }
-      );
-    }
-
-    if (agent.status === "disabled") {
-      return NextResponse.json(
-        { success: false, error: "Agent is disabled" },
-        { status: 403 }
-      );
-    }
-
-    // Verify token hash
-    const providedHash = crypto
-      .createHash("sha256")
-      .update(secretToken)
-      .digest("hex");
-
-    if (providedHash !== agent.secretTokenHash) {
-      await AuditLog.create({
-        action: "AGENT_AUTH_FAILED",
-        details: `Invalid token for agentId: ${agentId}`,
-        ipAddress: ip,
-        metadata: { agentId },
-      });
-      return NextResponse.json(
-        { success: false, error: "Invalid token" },
-        { status: 401 }
+        { success: false, error: "Agent connected config missing" },
+        { status: 404 }
       );
     }
 
@@ -65,7 +49,7 @@ export async function POST(req: NextRequest) {
 
     await AuditLog.create({
       action: "AGENT_AUTHENTICATED",
-      details: `Agent ${agentId} successfully authenticated.`,
+      details: `Agent ${agentId} successfully authenticated via credentials collection.`,
       ipAddress: ip,
       metadata: { agentId, provider: agent.provider },
     });

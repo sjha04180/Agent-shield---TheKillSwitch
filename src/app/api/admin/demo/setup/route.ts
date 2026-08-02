@@ -10,6 +10,7 @@ import { ConnectedAgent } from "@/models/ConnectedAgent";
 import { AgentMetrics } from "@/models/AgentMetrics";
 import { AgentActivity } from "@/models/AgentActivity";
 import { AuditLog } from "@/models/AuditLog";
+import { AgentCredentials } from "@/models/AgentCredentials";
 
 export async function POST(req: NextRequest) {
   try {
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
         country: "Singapore",
         status: "active",
         walletCount: 1,
-        agentCount: 3,
+        agentCount: 5,
         riskScore: 10,
       });
     }
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
         businessStartHour: 9,
         businessEndHour: 17,
         weekdaysOnly: false,
-        noWeekends: false, // Set weekend bans false for demo flexibility, can toggle inside scenario
+        noWeekends: false,
         timezone: "UTC",
         maxRiskScore: 75,
         requireManualApproval: false,
@@ -81,11 +82,13 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 4. Create local governed agents
+    // 4. Create local governed agents (including both Live agents and Simulator agents)
     const demoAgents = [
-      { id: "payroll-agent", name: "Payroll Agent", role: "payroll" },
-      { id: "marketing-agent", name: "Marketing Agent", role: "marketing" },
-      { id: "research-agent", name: "Research Agent", role: "research" },
+      { id: "cloud-billing-agent", name: "Cloud Billing Agent", role: "cloud_billing", provider: "lyzr" },
+      { id: "treasury-agent", name: "Treasury Agent", role: "treasury", provider: "lyzr" },
+      { id: "payroll-agent", name: "Payroll Simulator", role: "payroll", provider: "simulator" },
+      { id: "marketing-agent", name: "Marketing Simulator", role: "marketing", provider: "simulator" },
+      { id: "research-agent", name: "Research Simulator", role: "research", provider: "simulator" },
     ];
 
     for (const item of demoAgents) {
@@ -98,8 +101,8 @@ export async function POST(req: NextRequest) {
           ownerId: session.user.id,
           walletId: wallet._id,
           name: item.name,
-          description: `Autonomous agent doing corporate ${item.role} operations.`,
-          purpose: `Corporate auto-${item.role} executions.`,
+          description: `Governance agent doing ${item.role} operations.`,
+          purpose: `Corporate auto-${item.role} execution handler.`,
           network: "Sepolia",
           spendingLimit: 2.0,
           status: "active",
@@ -129,16 +132,16 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // 5. Setup adapter link for the simulator tick
+      // 5. Setup adapter link for the simulator tick and Live mode dashboards
       let connectedAgent = await ConnectedAgent.findOne({ agentId: item.id });
-      if (!connectedAgent) {
-        const token = `${item.id}-secret-token`;
-        const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+      const token = `${item.id}-secret-token`;
+      const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
 
-        await ConnectedAgent.create({
+      if (!connectedAgent) {
+        connectedAgent = await ConnectedAgent.create({
           agentId: item.id,
           agentName: item.name,
-          provider: "simulator",
+          provider: item.provider as "lyzr" | "simulator" | "future",
           organizationId: "agentshield-org",
           secretTokenHash: tokenHash,
           role: item.role,
@@ -146,14 +149,30 @@ export async function POST(req: NextRequest) {
           linkedAgentId: agent._id,
           lastSeen: new Date(),
         });
+      } else {
+        connectedAgent.provider = item.provider as "lyzr" | "simulator" | "future";
+        connectedAgent.linkedAgentId = agent._id;
+        await connectedAgent.save();
       }
+
+      // 6. Setup AgentCredentials for token validation
+      await AgentCredentials.findOneAndUpdate(
+        { agentId: item.id },
+        {
+          agentName: item.name,
+          provider: item.provider,
+          agentToken: token,
+          status: "active",
+        },
+        { upsert: true, new: true }
+      );
     }
 
     const ip = req.headers.get("x-forwarded-for") ?? "unknown";
     await AuditLog.create({
       userId: session.user.id,
       action: "DEMO_ENVIRONMENT_SETUP",
-      details: "Initialized demo organization, strict policies, wallets, and running agents.",
+      details: "Initialized demo organization, strict policies, wallets, running agents, and credentials.",
       ipAddress: ip,
     });
 

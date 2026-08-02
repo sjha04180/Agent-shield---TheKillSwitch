@@ -13,7 +13,14 @@ export async function GET(req: NextRequest) {
     // Check admin config flags
     let config = await SystemConfig.findOne();
     if (!config) {
-      config = await SystemConfig.create({ demoMode: true, lyzrEnabled: true });
+      config = await SystemConfig.create({
+        demoMode: true,
+        lyzrEnabled: true,
+        simulatorSpeed: "normal",
+        autoDemo: false,
+        blockchainSimulation: true,
+        geminiEnabled: true,
+      });
     }
 
     // 1. Blockchain RPC Ping Check
@@ -37,8 +44,19 @@ export async function GET(req: NextRequest) {
       ? "healthy"
       : "down";
 
-    // 3. Lyzr Status Check based on admin configuration
-    const lyzrStatus = config.lyzrEnabled ? "healthy" : "down";
+    // 3. Lyzr Status Check based on adapter heartbeat liveness
+    let lyzrStatus = "down";
+    if (config.lyzrEnabled) {
+      try {
+        const { LyzrAdapter } = await import("@/services/agents/LyzrAdapter");
+        const adapter = new LyzrAdapter();
+        const hb = await adapter.heartbeat();
+        lyzrStatus = hb.status === "online" ? "healthy" : "offline";
+      } catch (err) {
+        console.warn("[Health Check] Lyzr API liveness probe failed:", err);
+        lyzrStatus = "offline";
+      }
+    }
 
     // 4. Simulator Status Check based on admin configuration
     const simulatorStatus = config.demoMode ? "healthy" : "down";

@@ -1,96 +1,299 @@
-# AgentShield
+# The Kill Switch (AgentShield) — Secure AI Wallet Governance Platform
 
-AgentShield is an Enterprise AI Wallet Governance Platform designed to secure, govern, and audit financial transactions initiated by autonomous AI agents (such as Lyzr AI or internal simulators).
+**The Kill Switch** (featuring AgentShield) is a production-grade, out-of-band **Secure AI Wallet Governance Platform** designed to secure, govern, and audit financial transactions initiated by autonomous AI agents (such as Lyzr AI or internal simulators). It acts as a mandatory validation firewall between AI agents and blockchain wallets.
 
-It acts as a mandatory governance layer between an AI Agent and a Blockchain Wallet.
+---
 
-## 🏛 Architecture
+### 👥 Team Info & Submission Links
 
-The platform is built on Next.js 15, MongoDB, and Ethers.js, structured into distinct modular layers:
+*   **Team Name:** CodeCrafters
+*   **Team Members:**
+    *   **Prince Jha** (Team Leader)
+    *   **Sachin Jha**
+    *   **Bhavesh Jadhav**
+    *   **Ishaan Dubey**
+*   **Hosted Application URL:** [Launch AgentShield Console](https://your-deployed-app.vercel.app) *(Update with your Vercel deployment link)*
+*   **Demo Video Link:** [Watch Demo Video](https://youtube.com/your-demo-link) *(Update with your YouTube/Loom link)*
+*   **Project Presentation PPT:** [View Presentation Slides](https://canva.com/your-presentation-link) *(Update with your PPT link)*
 
-1. **Agent Adapter Layer:** Normalizes incoming webhook payloads from different AI providers into a standard strict schema.
-2. **Governance Layer (Policy Engine + Risk Engine):** Evaluates every transaction against organizational policies and dynamic risk factors.
-3. **Execution Layer (Blockchain/Simulation):** If approved, the transaction is executed on-chain (Sepolia) or queued in Simulation Mode.
-4. **Data Layer (MongoDB):** Maintains immutable Audit Logs, Analytics, and Connected Agent telemetry.
+---
 
-## 🔄 System Workflow
+## 🏛 System Architecture
 
-Every transaction follows a deterministic lifecycle:
-1. **Agent Request** → Inbound payload received from Lyzr or Simulator.
-2. **Authentication** → Validates `X-Agent-Id` and `X-Agent-Token` hash.
-3. **Payload Validation** → Prompt Injection guard scans for jailbreak attempts (e.g., "disable kill switch").
-4. **Adapter Normalization** → Parses the provider-specific payload.
-5. **Organization & Wallet Lookup** → Identifies the tied Smart Wallet and Policy config.
-6. **Policy Engine** → Runs static limits (Max amount, Daily limit, Weekends, etc.).
-7. **Risk Engine** → Calculates dynamic 0-100 risk score based on frequency, sizes, and reputation.
-8. **Decision Engine** → Outputs `APPROVED`, `PENDING_REVIEW`, or `BLOCKED`.
-9. **Kill Switch Check** → Rejects all transactions immediately if the master kill switch is active.
-10. **Blockchain Execution** → Signs and broadcasts via Ethers.js, or falls back to Simulation Mode.
-11. **AI Copilot** → Gemini API generates human-readable explanations of the decision.
-12. **Audit & Analytics** → Logs everything immutably.
+The system segregates the untrusted AI agent execution runtime from the governance validation layer and the on-chain smart contracts.
 
-## 🔌 Agent Adapter
+```mermaid
+graph TD
+    subgraph Origin [Request Origin]
+        Lyzr[Real Lyzr AI Agent]
+        Sim[Simulator Agent]
+    end
 
-The `IAgentAdapter` pattern ensures that AgentShield never cares about *which* AI is talking to it. 
-- `LyzrAdapter.ts`: Connects to Lyzr AI agents.
-- `SimulatorAdapter.ts`: Connects to the internal demo agent profiles (Treasury, Payroll, Marketing, etc.).
-- Adding AutoGen or CrewAI requires simply writing a new adapter class without touching the core governance code.
+    subgraph Adapter [Agent Adapter Layer]
+        LyzrAdapter[LyzrAdapter.ts]
+        SimAdapter[SimulatorAdapter.ts]
+    end
 
-## 🛡 Policy Engine
+    subgraph Pipeline [Central Governance Pipeline]
+        Auth[AgentCredentials Auth]
+        Guard[Prompt Injection Guard]
+        OrgLookup[Organization Status Check]
+        WalletLookup[Wallet Status Check]
+        Policy[Policy Engine]
+        Risk[Risk Engine]
+        Decision[Decision Engine]
+        KillSwitch[Kill Switch Check]
+    end
 
-The Policy Engine enforces static business rules:
-- Maximum transaction amount
-- Daily and Monthly spending limits
-- Allowed & Blocked recipients (Whitelists/Blacklists)
-- Allowed networks (Ethereum, Polygon, Sepolia)
-- Business hours restriction (e.g., 09:00 - 17:00 UTC)
-- Weekend restriction (Blocks Saturday/Sunday)
+    subgraph Execution [Execution Layer]
+        MetaMask[MetaMask / Master EOA]
+        Sepolia[Sepolia Smart Contract]
+        SimExec[Simulation Mode Fallback]
+    end
 
-## ⚠️ Risk Engine
+    subgraph Logging [Audit & Telemetry]
+        Audit[Audit Ledger]
+        Analytics[Analytics Dashboard]
+        Copilot[Gemini API Reasoner]
+    end
 
-The Risk Engine generates a dynamic score (0-100) based on contextual behavior:
-- Transaction amounts nearing limits
-- High frequency (rapid transactions)
-- Unknown or blacklisted recipients
-- Repeated policy violations within a short window
-- Returns a Risk Level (`Low`, `Medium`, `High`, `Critical`) and actionable recommendations.
+    Lyzr --> LyzrAdapter
+    Sim --> SimAdapter
+    LyzrAdapter --> Auth
+    SimAdapter --> Auth
+    Auth --> Guard
+    Guard --> OrgLookup
+    OrgLookup --> WalletLookup
+    WalletLookup --> Policy
+    Policy --> Risk
+    Risk --> Decision
+    Decision --> KillSwitch
+    KillSwitch -->|Approved| MetaMask
+    KillSwitch -->|Demo / Offline| SimExec
+    MetaMask --> Sepolia
+    Sepolia --> Audit
+    SimExec --> Audit
+    Audit --> Analytics
+    Audit --> Copilot
+```
 
-## 🎮 Demo Mode vs Live Mode
+### 1. Inbound Webhook / Adapter Layer
+*   Normalizes provider-specific payloads (e.g. Lyzr JSON configurations) into a unified standard interface contract (`TransactionRequest`).
+*   Prevents direct database connections from third-party agents.
 
-- **Demo Mode:** Transactions are simulated to execute instantly (800ms delay) without burning real gas. Excellent for hackathons and presentations. 
-- **Live Mode:** Connects to standard EVM RPC nodes using Ethers.js to sign and broadcast real transactions. If the RPC fails, it falls back gracefully to Simulation Mode so the application never crashes.
+### 2. Governance Pipeline Layer
+*   **Authentication check**: Validates headers (`x-agent-id` and `x-agent-token`) against the secured `AgentCredentials` collection in MongoDB.
+*   **Jailbreak Guard Filter**: Scans description payloads for prompt injection threats using strict regex-based heuristics.
+*   **Policy Engine**: Enforces spending caps (daily, weekly, monthly), whitelist and blacklist address lists, weekday/weekend restrictions, timezone boundaries, and network chain validations.
+*   **Risk Engine**: Employs dynamic scoring logic (0-100) analyzing target address trust, velocity limits, and repeated block records.
+*   **Circuit Breaker (Auto Kill Switch)**: If risk score $\ge 80$, the system automatically activates a freeze event, locking associated wallets and agents instantly.
 
-## 🚀 Deployment
+### 3. Execution Layer
+*   **Cryptographic Co-Signing**: Generates Keccak256 ECDSA co-signatures signed by the gateway's master private key.
+*   **On-chain Validation**: The smart contract `TransactionExecutor.sol` validates gateway signatures using `ecrecover` before allowing treasury payouts.
+*   **Simulation Fallback**: If MetaMask is disconnected or Sepolia node providers are offline, the execution layer gracefully falls back to simulation queues to prevent app crashes.
 
-The platform is designed to be easily deployed to Vercel without complex Docker containers.
+---
+
+## 🔄 Sandbox Mode vs. Live Mode
+
+The platform supports two distinct modes of execution, selectable instantly from the **Settings** dashboard:
+
+1.  **Sandbox Mode (Mock Simulation Demo — No External Agents Involved)**:
+    *   **Concept**: A local, self-contained mock environment.
+    *   **Workflow**: Transaction requests are generated by the internal simulation profiles (Payroll, Marketing, Research). It requires **no external API connections** or keys to run, making it ideal for presenting the core policy engine, risk calculation, audit logs, and on-chain signature layouts offline.
+2.  **Live Mode (Real AI Agents Demo)**:
+    *   **Concept**: Integrates real, live-deployed **Lyzr AI agents**.
+    *   **Workflow**: When transaction scenarios are triggered, the platform makes real outbound REST requests to the deployed Lyzr AI agents. The agents interpret the query, generate a valid transaction JSON payload, and route it through the governance check.
+    *   **Resiliency**: If the real Lyzr APIs are unreachable, offline, or misconfigured, the gateway automatically executes a **Demo Fallback** to ensure the presentation continues smoothly.
+
+---
+
+## 🤖 Lyzr AI Integration
+
+Live Mode integrates pre-deployed Lyzr agents using the Lyzr REST API. Server-side API routers handle requests without exposing credentials to the client.
+
+### Cloud Billing Agent
+*   **ID**: `6a6e4c1ca38896fb0eb4cd1a`
+*   **Responsibilities**: GCP, AWS, Azure, Supabase, Vercel, Supabase, and OpenAI credits.
+*   **Curl Interface**:
+```bash
+curl -X POST 'https://agent-prod.studio.lyzr.ai/v3/inference/chat/' \
+  -H 'Content-Type: application/json' \
+  -H 'x-api-key: <LYZR_API_KEY>' \
+  -d '{
+    "user_id": "your_lyzr_registered_email",
+    "agent_id": "6a6e4c1ca38896fb0eb4cd1a",
+    "session_id": "6a6e4c1ca38896fb0eb4cd1a-zl6gduol",
+    "message": "Initiate AWS EC2 invoice transfer"
+  }'
+```
+
+### Treasury Agent
+*   **ID**: `6a6e4e1f3e5531f4fe904659`
+*   **Responsibilities**: Vendor transfers, reserve wallet allocations, and internal funding.
+*   **Curl Interface**:
+```bash
+curl -X POST 'https://agent-prod.studio.lyzr.ai/v3/inference/chat/' \
+  -H 'Content-Type: application/json' \
+  -H 'x-api-key: <LYZR_API_KEY>' \
+  -d '{
+    "user_id": "your_lyzr_registered_email",
+    "agent_id": "6a6e4e1f3e5531f4fe904659",
+    "session_id": "6a6e4e1f3e5531f4fe904659-wzuf0927",
+    "message": "Send vendor allocation"
+  }'
+```
+
+### Automatic Demo Fallback (Failover Loop)
+If the Lyzr REST server is unreachable, times out, or throws credentials validation errors:
+1.  The adapter catches the connection exception.
+2.  Updates `SystemConfig` setting `demoMode = true` in MongoDB.
+3.  Logs a `LYZR_FAILOVER_TRIGGERED` audit log document.
+4.  Reroutes execution to the local simulator agent.
+5.  Flashes a Toast notification: *"Lyzr unavailable. Simulator activated."*
+
+---
+
+## 🔌 Agent Adapter Layer
+
+All adapters implement the unified `IAgentAdapter` interface located at `src/services/agents/AgentAdapter.ts`:
+
+```typescript
+export interface IAgentAdapter {
+  connect(): Promise<void>;
+  disconnect(): Promise<void>;
+  receiveTransaction(raw: unknown): Promise<AgentRequest>;
+  validatePayload(payload: unknown): { valid: boolean; errors?: string[] };
+  normalizeRequest(raw: unknown): AgentRequest;
+  normalizePayload(raw: unknown): AgentRequest;
+  heartbeat(): Promise<HeartbeatResult>;
+  generateTransaction(agentId: string, message: string): Promise<AgentRequest>;
+}
+```
+
+*   **`SimulatorAdapter.ts`**: Simulates transaction behaviors for Payroll, Marketing, and Research.
+*   **`FutureAdapter.ts`**: Stub to extend governance support to CrewAI, LangGraph, OpenAI Operator, and AutoGen.
+
+---
+
+## 🔑 Authentication Contract
+
+Secure handshake verifications are required for external agents submitting requests to the platform.
+
+```
+Incoming Request (x-agent-id, x-agent-token) 
+                      │
+                      ▼
+            AgentCredentials (DB)
+           ┌───────────────────┐
+           │      Exists?      │── No  ──> 401 Unauthorized
+           └───────────────────┘
+                      │ Yes
+                      ▼
+            ┌───────────────────┐
+            │   Token Match?    │── No  ──> 401 Unauthorized
+            └───────────────────┘
+                      │ Yes
+                      ▼
+             Enters Policy Engine
+```
+
+---
+
+## 🛣 API Endpoints
+
+### 1. Submit Request
+`POST /api/agents/request`
+*   **Headers**:
+    *   `x-agent-id`: Agent identification slug
+    *   `x-agent-token`: Secret authentication token
+*   **Body**: `AgentRequest` JSON object
+*   **Response**: `APPROVED`, `BLOCKED`, or `PENDING_REVIEW` with Gemini-grounded reasoning.
+
+### 2. Verify Handshake
+`POST /api/agents/authenticate`
+*   **Body**: `{ "agentId": "...", "secretToken": "..." }`
+*   **Response**: Updates agent's online telemetry status.
+
+### 3. Check Heartbeats
+`GET /api/agents/heartbeat`
+*   **Headers**: Required authentication tokens.
+*   **Response**: Latency and liveness metrics.
+
+### 4. Health Diagnostics
+`GET /api/system/health`
+*   **Response**: Real-time status checks for MongoDB, Gemini API, MetaMask link, Sepolia RPC, and Lyzr connectivity.
+
+---
+
+## 🎮 Interactive Sandbox Demo Guide
+
+To demonstrate the full features of the AgentShield platform during hackathon presentations or judge evaluations, use the built-in sandbox tools:
+
+### 1. The Sandbox Demo Wizard
+*   **How to trigger**: Click the floating graduation cap icon (`🎓`) in the bottom-right corner of the dashboard screen.
+*   **What it does**: Opens a step-by-step panel guiding judges through the 12 operational stages of the platform (Establish Organization $\rightarrow$ Connect Wallet $\rightarrow$ Register Agents $\rightarrow$ Safe Payment $\rightarrow$ Suspicious Payment $\rightarrow$ Policy Block $\rightarrow$ Kill Switch Trigger $\rightarrow$ Blockchain Signatures $\rightarrow$ Audit logs).
+*   **UX Highlight**: The wizard automatically highlights corresponding UI layout elements (Sidebar navigation, MetaMask buttons) as you advance.
+
+### 2. Automated Enterprise Demo
+*   **How to trigger**: Click the **⚡ Launch Enterprise Demo** button located in the bottom-right corner.
+*   **What it does**: Initiates an automated 60-second scripted scenario:
+    1.  Scrubs the local MongoDB database.
+    2.  Seeds the *Nova Finance* sandbox organization, wallets, and agents.
+    3.  Dispatches a safe transaction (0.05 ETH GCP billing).
+    4.  Dispatches a high-value transaction (1.95 ETH SaaS payment).
+    5.  Attempts to transact with an unverified address (0xdead).
+    6.  Triggers a wallet drain attack, activating the global **Kill Switch** circuit breaker.
+    7.  Updates dashboard counters, risk charts, and displays system Toast notifications in real-time.
+
+### 3. Continuous Auto-Demo
+*   **How to trigger**: Go to **Settings** $\rightarrow$ enable **Auto Demo Loop** and select the speed (Normal: 60s, Fast: 15s, or Stress Test: 3s).
+*   **What it does**: Automatically schedules a client-side execution loop that periodically ticks simulated requests, populating the audit log database with continuous dashboard activity.
+
+---
+
+## 🛠 Configuration & Deployment
+
+### Environment Variables (`.env.local`)
+
+```env
+# NextAuth / Auth.js Configuration
+NEXTAUTH_SECRET=your_auth_secret_hash
+NEXTAUTH_URL=http://localhost:3000
+
+# Databases & Models APIs
+MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/agentshield
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# Blockchain Sepolia Configuration
+SEPOLIA_RPC_URL=https://rpc.sepolia.org
+MASTER_WALLET_PRIVATE_KEY=your_admin_master_wallet_signing_key
+
+# Lyzr Platform AI Credentials
+LYZR_API_KEY=your_lyzr_platform_api_key
+LYZR_ENDPOINT=https://agent-prod.studio.lyzr.ai/v3/inference/chat/
+LYZR_USER_ID=your_lyzr_registered_email
+LYZR_CLOUD_AGENT_ID=6a6e4c1ca38896fb0eb4cd1a
+LYZR_TREASURY_AGENT_ID=6a6e4e1f3e5531f4fe904659
+```
+
+### Installation
 
 ```bash
+# 1. Install dependencies
 npm install
+
+# 2. Compile Hardhat contracts & generate typechains
+npm run hardhat:compile
+
+# 3. Launch local Next.js dev server
 npm run dev
 ```
 
-For production builds:
+### Production Build
 ```bash
 npm run build
 npm start
 ```
-
-### Environment Variables
-
-Configure your `.env.local`:
-
-```env
-MONGODB_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/agentshield
-NEXTAUTH_SECRET=your_secret
-NEXTAUTH_URL=http://localhost:3000
-SEPOLIA_RPC_URL=https://rpc.sepolia.org
-GEMINI_API_KEY=your_gemini_key
-NEXT_PUBLIC_DEMO_MODE=true
-```
-
-## 🛣 Future Roadmap
-
-- **Geographic Restrictions:** Enforcing IP/Geofence constraints on Agent execution nodes.
-- **Multi-Sig Approvals:** Requiring 2+ admins to approve `PENDING_REVIEW` transactions.
-- **Smart Contract Policy Enforcement:** Migrating some static Policy Engine rules directly into the Solidity Smart Contract for on-chain verifiable governance.
-- **Pluggable AI Models:** Replacing Gemini with OpenAI/Anthropic/Local LLMs for Copilot explanations.
+*Deployment is fully compatible with Vercel and MongoDB Atlas, requiring zero Docker or AWS dependencies.*

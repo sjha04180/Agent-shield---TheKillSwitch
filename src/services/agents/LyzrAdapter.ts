@@ -119,18 +119,138 @@ export class LyzrAdapter implements IAgentAdapter {
     return this.normalizeRequest(raw);
   }
 
+  normalizePayload(raw: unknown): AgentRequest {
+    return this.normalizeRequest(raw);
+  }
+
+  async generateTransaction(agentId: string, message: string): Promise<AgentRequest> {
+    const endpoint = process.env.LYZR_ENDPOINT || "https://agent-prod.studio.lyzr.ai/v3/inference/chat/";
+    const apiKey = process.env.LYZR_API_KEY;
+    const userId = process.env.LYZR_USER_ID || "pjha91275@gmail.com";
+
+    if (!apiKey) {
+      console.warn("[LyzrAdapter] LYZR_API_KEY is not configured. Triggering failover to Demo Mode.");
+      await this.triggerDemoFailover("LYZR_API_KEY environment variable is missing.");
+      throw new Error("Lyzr unavailable. Simulator activated.");
+    }
+
+    let lyzrAgentId = "";
+    if (agentId === "cloud-billing-agent" || agentId === "cloud_billing") {
+      lyzrAgentId = process.env.LYZR_CLOUD_AGENT_ID || "6a6e4c1ca38896fb0eb4cd1a";
+    } else if (agentId === "treasury-agent" || agentId === "treasury") {
+      lyzrAgentId = process.env.LYZR_TREASURY_AGENT_ID || "6a6e4e1f3e5531f4fe904659";
+    } else {
+      throw new Error(`Unsupported Lyzr agent ID: ${agentId}`);
+    }
+
+    const sessionId = `${lyzrAgentId}-${Math.random().toString(36).substring(2, 10)}`;
+    const promptMessage = message || "Generate a transaction request JSON.";
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          agent_id: lyzrAgentId,
+          session_id: sessionId,
+          message: promptMessage,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Lyzr status ${response.status}`);
+      }
+
+      const data = await response.json();
+      const rawText = data.response || "";
+      
+      // Extract first JSON object from raw response text
+      const match = rawText.match(/\{[\s\S]*?\}/);
+      if (!match) {
+        throw new Error("Lyzr response did not contain a valid transaction JSON payload.");
+      }
+
+      const parsedJson = JSON.parse(match[0]);
+
+      // Normalize Lyzr keys to AgentRequest schema
+      return this.normalizeRequest({
+        ...parsedJson,
+        agent_id: agentId,
+        ts: new Date().toISOString(),
+      });
+
+    } catch (err: any) {
+      console.error("[LyzrAdapter] API Connection Failed:", err);
+      await this.triggerDemoFailover(err.message || "Network timeout / connection error.");
+      throw new Error("Lyzr unavailable. Simulator activated.");
+    }
+  }
+
+  private async triggerDemoFailover(reason: string): Promise<void> {
+    try {
+      const { SystemConfig } = await import("@/models/SystemConfig");
+      const { AuditLog } = await import("@/models/AuditLog");
+      
+      // Update system configuration to Demo Mode
+      await SystemConfig.findOneAndUpdate({}, { demoMode: true });
+
+      // Create log
+      await AuditLog.create({
+        action: "LYZR_FAILOVER_TRIGGERED",
+        details: `Lyzr API offline or misconfigured. Falling back to Demo Mode. Error: ${reason}`,
+        ipAddress: "127.0.0.1",
+        metadata: { error: reason },
+      });
+      console.log("[LyzrAdapter] Graceful failover to Demo Mode successfully engaged.");
+    } catch (dbErr) {
+      console.error("[LyzrAdapter] Failed to write failover logs:", dbErr);
+    }
+  }
+
   async heartbeat(): Promise<HeartbeatResult> {
     const start = Date.now();
-    // Lyzr heartbeat: we just confirm our adapter is alive
-    // Real latency measurement would ping Lyzr's status API if available
-    await Promise.resolve(); // simulate async
-    const latencyMs = Date.now() - start;
+    const apiKey = process.env.LYZR_API_KEY;
 
-    return {
-      agentId: "lyzr-adapter",
-      timestamp: new Date().toISOString(),
-      latencyMs,
-      status: "online",
-    };
+    if (!apiKey) {
+      return {
+        agentId: "lyzr-adapter",
+        timestamp: new Date().toISOString(),
+        latencyMs: 0,
+        status: "offline",
+      };
+    }
+
+    try {
+      // Perform simple heartbeat probe check using a short request or checking keys
+      const endpoint = process.env.LYZR_ENDPOINT || "https://agent-prod.studio.lyzr.ai/v3/inference/chat/";
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 1500); // 1.5s timeout for fast liveness
+
+      const response = await fetch(endpoint, {
+        method: "OPTIONS", // OPTIONS request is lightweight and doesn't execute inference
+        headers: { "x-api-key": apiKey },
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      return {
+        agentId: "lyzr-adapter",
+        timestamp: new Date().toISOString(),
+        latencyMs: Date.now() - start,
+        status: response.status === 405 || response.ok ? "online" : "offline", // 405 is fine since OPTIONS might be blocked but validates API key check
+      };
+    } catch (err) {
+      return {
+        agentId: "lyzr-adapter",
+        timestamp: new Date().toISOString(),
+        latencyMs: Date.now() - start,
+        status: "offline",
+      };
+    }
   }
 }
+

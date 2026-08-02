@@ -140,6 +140,9 @@ export default function SimulatorPage() {
           addNotification("AUTO KILL SWITCH TRIGGERED", "Critical attack vector blocked automatically.", "error");
           fetchKillSwitchStatus();
         }
+        if (data.data.failover) {
+          addNotification("Lyzr Unavailable", "Lyzr unavailable. Simulator activated.", "warning");
+        }
       } else {
         alert(data.error?.message || "Failed to execute scenario check");
       }
