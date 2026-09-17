@@ -1,6 +1,6 @@
 # AgentShield - Website Flow Diagram
 
-```mermaid
+```mermaid 
 graph TD
     %% ---------------------------------------------------
     %% 1. ENTRY POINT & AUTHENTICATION FLOW
