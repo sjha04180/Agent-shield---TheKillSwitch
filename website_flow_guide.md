@@ -1,141 +1,125 @@
-# AgentShield - Website Flow Guide
-
-This document maps out the complete user journey, navigation pathways, tab menus, and interactive control buttons across the **AgentShield** platform.
-
----
-
-## 🗺️ System Navigation Tree
+# AgentShield - Website Flow Diagram
 
 ```mermaid
 graph TD
-    %% 1. Entry Points
-    Landing["🏠 Landing Page (/)"] --> |"Login"| LoginPage["🔐 Login Page (/login)"]
-    Landing --> |"Launch Demo"| LoginPage
-    Landing --> |"Live Demo"| LoginPage
-    Landing --> |"Launch Console (Bypass)"| DemoAutologin["⚡ Auto-sign in to Seeded Owner/Admin Account"]
+    %% ----------------------------------------------------
+    %% 1. ENTRY POINT & AUTHENTICATION FLOW
+    %% ----------------------------------------------------
+    Landing["🏠 Landing Page (/)"]
     
-    %% 2. Authentication Paths
-    DemoAutologin --> Dashboard["📊 Dashboard Console (/dashboard)"]
-    LoginPage --> |"Credentials (Email/Password)"| Dashboard
-    LoginPage --> |"Google OAuth login"| Dashboard
-    LoginPage --> |"Credentials Bypass Helper Link"| Dashboard
-    LoginPage --> |"Create Account"| RegisterPage["📝 Register Page (/register)"]
-    RegisterPage --> |"Submit Register (Owner/Admin)"| LoginPage
+    %% Landing Page Actions
+    Landing --> |"Click 'Login'"| LoginPage["🔐 Login Page (/login)"]
+    Landing --> |"Click 'Launch Demo'"| LoginPage
+    Landing --> |"Click 'Live Demo'"| LoginPage
+    Landing --> |"Click 'Launch Console'"| LaunchConsoleBypass["⚡ Bypass Login"]
     
-    %% 3. Dashboard Sidebar Tabs
-    Dashboard --> Sidebar["📂 Sidebar Menu Tabs"]
+    %% Bypass Flow
+    LaunchConsoleBypass --> |"Auto-signs into Seeded Demo Account (Admin/Owner)"| Dashboard["📊 Dashboard Root (/dashboard)"]
+
+    %% Login Page Options
+    LoginPage --> |"Direct Email & Password Sign In"| FormAuth["🔑 Validate Credentials"]
+    LoginPage --> |"Click 'Sign In with Google'"| GoogleOAuth["🌐 Google OAuth (Checks Bypass)"]
+    LoginPage --> |"Click 'Preset Admin Credentials'"| PresetAuth["👤 Pre-fill Seeded Admin Account"]
+    LoginPage --> |"Click 'Create an account'"| RegisterPage["📝 Register Page (/register)"]
     
-    Sidebar --> OverviewTab["📈 Overview / Analytics Tab"]
-    Sidebar --> WalletsTab["💳 Smart Wallets Tab"]
-    Sidebar --> AgentsTab["🤖 AI Agents Tab"]
-    Sidebar --> PoliciesTab["🛡️ Policy Engine Tab"]
-    Sidebar --> SimulatorTab["🚨 Threat Sandbox / Simulator Tab"]
-    Sidebar --> AuditTab["📜 Audit Ledger Tab"]
-    Sidebar --> CopilotTab["💬 Security Copilot Tab"]
-    Sidebar --> SettingsTab["⚙️ Platform Settings Tab"]
+    %% Registration Actions
+    RegisterPage --> |"Enter Name, Email, Password"| RegisterRoleSelect["🎭 Select Governing Role"]
+    RegisterRoleSelect --> |"Choose 'Owner' (Master Privileges)"| RegisterSubmit["Submit Account Creation"]
+    RegisterRoleSelect --> |"Choose 'Admin' (Read-Write Operator)"| RegisterSubmit
+    RegisterSubmit --> |"Redirects on success"| LoginPage
+
+    %% Validation Results
+    FormAuth --> |"Success"| Dashboard
+    GoogleOAuth --> |"Success"| Dashboard
+    PresetAuth --> |"Success"| Dashboard
+
+    %% ----------------------------------------------------
+    %% 2. DASHBOARD MAIN SIDEBAR TABS
+    %% ----------------------------------------------------
+    Dashboard --> SidebarTabs["📂 Sidebar Menu Navigation"]
+    
+    SidebarTabs --> TabOverview["📈 Overview / Analytics Tab"]
+    SidebarTabs --> TabWallets["💳 Smart Wallets Tab"]
+    SidebarTabs --> TabAgents["🤖 AI Agents Tab"]
+    SidebarTabs --> TabPolicies["🛡️ Policy Engine Tab"]
+    SidebarTabs --> TabSimulator["🚨 Threat Sandbox / Simulator Tab"]
+    SidebarTabs --> TabAudit["📜 Audit Ledger Tab"]
+    SidebarTabs --> TabCopilot["💬 Security Copilot Tab"]
+    SidebarTabs --> TabSettings["⚙️ Platform Settings Tab"]
+
+    %% ----------------------------------------------------
+    %% 3. TAB 1: OVERVIEW / ANALYTICS
+    %% ----------------------------------------------------
+    TabOverview --> |"View metrics"| MetricsCards["📊 Total Wallets, Active Agents, Blocked Tx, Governance Score"]
+    TabOverview --> |"Click '+ Register Wallet'"| OverviewRegWallet["➕ Redirect to Smart Wallets Tab"]
+    TabOverview --> |"Click 'Freeze Wallet'"| OverviewFreeze["🔒 Halt wallet signature validations"]
+    TabOverview --> |"Click 'Unfreeze Wallet'"| OverviewUnfreeze["🔓 Resume wallet signature validations"]
+    TabOverview --> |"Click Alerts Card"| OverviewAlerts["🔔 Redirect to Audit Ledger Tab"]
+
+    %% ----------------------------------------------------
+    %% 4. TAB 2: SMART WALLETS
+    %% ----------------------------------------------------
+    TabWallets --> |"Click 'Simulate Wallet Connection'"| WalletConnect["🔌 Initialize MetaMask EIP-1193 Link"]
+    TabWallets --> |"Click 'Deploy Smart Contract Wallets'"| WalletDeploy["🚀 Deploys ERC-4337 Smart Account proxies on Sepolia"]
+    TabWallets --> |"Click 'Freeze Keys'"| WalletFreezeKeys["❄️ Revokes active private key authorizations"]
+    TabWallets --> |"Click 'Trigger Recovery Withdrawal'"| WalletRescue["💸 Drain contract assets to Master EOA cold wallet"]
+
+    %% ----------------------------------------------------
+    %% 5. TAB 3: AI AGENTS
+    %% ----------------------------------------------------
+    TabAgents --> |"Click 'Configure' on Card"| AgentConfigure["🔧 Redirect to Policy Engine Tab"]
+    TabAgents --> |"Click 'Pause' / 'Start' on Card"| AgentToggleStatus["⏸️ Switch agent state active <-> paused"]
+    TabAgents --> |"Click 'Suspend' on Card"| AgentSuspend["🛑 Revoke agent API credentials completely"]
+    TabAgents --> |"Click '⚡ Propose' on Card"| AgentManualPropose["⚡ Prompt agent to compile and submit transaction proposal"]
+    TabAgents --> |"Click 'Deploy Governed AI Agent'"| AgentDeployModal["🆕 Open setup modal"]
+    
+    %% Deploy Agent Modal Actions
+    AgentDeployModal --> |"Input Agent Name, description, wallet, spending limit, allowed tokens"| AgentDeploySubmit["Submit Form"]
+    AgentDeploySubmit --> |"Success"| AgentDeployOutput["🔑 Display Generated Secret API Key"]
+
+    %% ----------------------------------------------------
+    %% 6. TAB 4: POLICY ENGINE
+    %% ----------------------------------------------------
+    TabPolicies --> |"Input 'Single Transaction Cap'"| PolicyCap["💵 Limit maximum single transaction value"]
+    TabPolicies --> |"Toggle 'Weekend Locks'"| PolicyWeekend["calendar Toggles Weekend transaction blocks"]
+    TabPolicies --> |"Edit Token Lists"| PolicyTokens["📋 Add/remove allowed/blocked tokens"]
+    TabPolicies --> |"Slide 'Max Risk Score'"| PolicyRiskCap["📊 Adjust Gemini-evaluated risk threshold (0-100)"]
+    TabPolicies --> |"Click 'Create Policy'"| PolicyCreateModal["➕ Open custom policy rules designer"]
+
+    %% ----------------------------------------------------
+    %% 7. TAB 5: THREAT SANDBOX / SIMULATOR
+    %% ----------------------------------------------------
+    TabSimulator --> |"Select Agent dropdown"| SimChooseAgent["Select target agent profile"]
+    
+    %% Simulator Scenarios
+    SimChooseAgent --> |"Click 'Execute Safe Payment'"| SimSafe["🟢 Submit 0.05 ETH billing request -> Cosigned & Executed"]
+    SimChooseAgent --> |"Click 'Trigger Anomaly'"| SimAnomaly["🟡 Submit 1.95 ETH warning request -> Alert warning toast"]
+    SimChooseAgent --> |"Click 'Trigger Policy Block'"| SimBlock["🔴 Submit 0.05 ETH to 0xdead -> Blocked by Policy Engine"]
+    SimChooseAgent --> |"Click 'Trigger Wallet Drain'"| SimDrain["💀 Submit 50 ETH request -> Risky heist -> Auto Kill Switch tripped"]
+    
+    %% Kill Switch Modals
+    TabSimulator --> |"Click '🚨 Activate Kill Switch'"| SimManualFreeze["🔒 Open halt modal -> Input reason -> Global wallet freeze"]
+    TabSimulator --> |"Click '🔓 Deactivate Kill Switch'"| SimManualUnfreeze["🔓 Open unlock modal -> Input reason -> Resume console"]
+
+    %% ----------------------------------------------------
+    %% 8. TAB 6: AUDIT LEDGER
+    %% ----------------------------------------------------
+    TabAudit --> |"Filter dropdown options"| AuditFilter["🔍 Restrict list to 'Approved' or 'Blocked' status"]
+    TabAudit --> |"Input Search query"| AuditSearch["🔎 Search by transaction hash or wallet address"]
+    TabAudit --> |"Click log entry row"| AuditDetail["🧠 Open Gemini log grounding analysis popover"]
+
+    %% ----------------------------------------------------
+    %% 9. TAB 7: SECURITY COPILOT
+    %% ----------------------------------------------------
+    TabCopilot --> |"View Status Badge"| CopilotActive["🤖 Google Gemini 1.5 Flash is active"]
+    TabCopilot --> |"Click Suggestion Card"| CopilotSuggest["💡 Auto-fills preset question in chat input box"]
+    TabCopilot --> |"Enter query & click Send"| CopilotSend["✉️ Call Gemini Copilot API -> Renders response bubbles"]
+
+    %% ----------------------------------------------------
+    %% 10. TAB 8: PLATFORM SETTINGS
+    %% ----------------------------------------------------
+    TabSettings --> |"Toggle 'Execution Mode'"| SettingsMode["🎛️ Toggle between Demo Mode (ticks) & Live Mode (real agents)"]
+    TabSettings --> |"Toggle 'Lyzr AI Integration'"| SettingsLyzr["🔄 Toggle active connection to Lyzr API runtime"]
+    TabSettings --> |"Toggle 'Gemini Evaluation'"| SettingsGemini["🧠 Toggle security prompt evaluation engine"]
+    TabSettings --> |"Click 'Reset Demo Environment'"| SettingsReset["🧼 Complete wipe and re-seed of sandbox organization"]
 ```
-
----
-
-## 🏛️ Flow Breakdown by Page
-
-### 1. Landing Page (`/`)
-*   **Navigation Header Options**:
-    *   **Logo / Brand Name**: Re-routes back to Landing Page (`/`).
-    *   **Features / Architecture / Workflow / Tech Stack / FAQ**: Smooth scrolling anchors.
-    *   **Login**: Redirects directly to `/login`.
-    *   **Launch Console**: Direct **bypass flow** that logs the user into a pre-seeded **Admin/Owner Account** using preset mock credentials, allowing instant sandbox access.
-*   **Hero Call-to-Actions**:
-    *   **Launch Demo**: Redirects to the login route.
-    *   **Live Demo**: Redirects to the login route.
-
-### 2. Login Page (`/login`) & Registration Page (`/register`)
-*   **Auth Entry Points**:
-    *   **Credentials Sign In**: Enter registered email and password.
-    *   **Seeded Admin Bypass Helper**: Clicking this link fills in pre-seeded admin/owner credentials (e.g. `admin@agentshield.com` or similar preset mock profiles) and automatically logs the user in.
-    *   **Google OAuth Sign In**: Initiates Google authentication (with pkce/state checks resolved for Vercel).
-    *   **Create Account Link**: Redirects to `/register`.
-*   **Registration Page Options**:
-    *   Create a profile by inputting Name, Email, Password, and selecting a **Governing Role**:
-        *   **Owner (Master Controller)**: Holds full signature control, wallet configuration, and override privileges.
-        *   **Admin (Read/Write Manager)**: Holds operational configuration views but cannot bypass global freezes or trigger master key recovery.
-
----
-
-## 📂 Dashboard Tab Interactions Tree
-
-```mermaid
-graph TD
-    DashboardPage["📊 Dashboard Root (/dashboard)"]
-    
-    %% Overview
-    DashboardPage --> Overview["📈 Overview / Analytics Tab"]
-    Overview --> O1["➕ Register Wallet Button"]
-    Overview --> O2["🔒 Freeze Wallet Card Action"]
-    Overview --> O3["🔓 Unfreeze Wallet Card Action"]
-    Overview --> O4["🔔 Alerts Stream Card Notification"]
-    
-    %% Wallets
-    DashboardPage --> Wallets["💳 Smart Wallets Tab"]
-    Wallets --> W1["🔌 Simulate Wallet Connection (MetaMask)"]
-    Wallets --> W2["🚀 Deploy smart contract wallets (ERC-4337)"]
-    Wallets --> W3["❄️ Freeze Keys (Multi-sig/EOA)"]
-    Wallets --> W4["💸 Trigger Recovery Withdrawal (Master EOA rescue)"]
-    
-    %% AI Agents
-    DashboardPage --> Agents["🤖 AI Agents Tab"]
-    Agents --> A1["🔧 Configure (Edit individual agent limits)"]
-    Agents --> A2["⏸️ Pause / Start (Toggle agent state)"]
-    Agents --> A3["🛑 Suspend (Completely block agent API)"]
-    Agents --> A4["⚡ Propose Transaction (Manual prompt trigger)"]
-    Agents --> A5["🆕 Deploy Governed AI Agent (Modal Form)"]
-    
-    %% Policies
-    DashboardPage --> Policies["🛡️ Policy Engine Tab"]
-    Policies --> P1["💵 Edit Single Tx Limit Cap"]
-    Policies --> P2["📆 Toggle Weekend Locks"]
-    Policies --> P3["📋 Configure Token Whitelists / Blacklists"]
-    Policies --> P4["📊 Adjust Max Risk Score Thresholds"]
-    Policies --> P5["➕ Create Policy (Define custom rules)"]
-    
-    %% Simulator
-    DashboardPage --> Simulator["🚨 Threat Sandbox / Simulator Tab"]
-    Simulator --> S1["🟢 Execute Safe Payment (0.05 ETH billing scenario)"]
-    Simulator --> S2["🟡 Trigger Anomaly (1.95 ETH payout warning scenario)"]
-    Simulator --> S3["🔴 Trigger Policy Block (0xdead blacklisted wallet scenario)"]
-    Simulator --> S4["💀 Trigger Wallet Drain (50 ETH critical heist scenario -> Auto Kill Switch!)"]
-    Simulator --> S5["🚨 Activate Kill Switch Modal (Manual global halt)"]
-    Simulator --> S6["🔓 Deactivate Kill Switch Modal (Emergency recovery)"]
-    
-    %% Audit Ledger
-    DashboardPage --> Audit["📜 Audit Ledger Tab"]
-    Audit --> AU1["🔍 Filter Logs by Status (Approved / Blocked)"]
-    Audit --> AU2["🔎 Search by TX hash / Wallet Address"]
-    Audit --> AU3["🧠 View Gemini Security grounding log analysis (Modal)"]
-    
-    %% Security Copilot
-    DashboardPage --> Copilot["💬 Security Copilot Tab"]
-    Copilot --> C1["🤖 Active Model Status Indicator (Google Gemini 1.5 Flash)"]
-    Copilot --> C2["💡 Preset Query Cards (Auto-drafting limits / Log audit requests)"]
-    Copilot --> C3["✉️ Input Message Text Box & Send Button"]
-    
-    %% Platform Settings
-    DashboardPage --> Settings["⚙️ Platform Settings Tab"]
-    Settings --> ST1["🎛️ Toggle Execution Mode (Demo vs Live Mode)"]
-    Settings --> ST2["🔄 Toggle Lyzr AI Agent Connection"]
-    Settings --> ST3["🧠 Toggle Gemini Evaluation Grounding"]
-    Settings --> ST4["🧼 Reset Demo Environment (Scrub & Seed database)"]
-```
-
----
-
-## 🛡️ Live Mode vs. Demo Mode Behaviors
-
-The system execution characteristics change dynamically depending on the selected mode:
-
-| Component | Demo Mode 🟡 | Live Mode 🟢 |
-| :--- | :--- | :--- |
-| **Transaction Ingestion** | Local simulated scheduler ticks generate automatic activity logs every 8 seconds. | Automated scheduler ticks are disabled. The system waits for real webhook transaction proposals. |
-| **Live Runner Wizard** | Runs step-by-step Sandbox tutorials, database resets, and seeds organization data. | Runs active transaction pipelines using live user parameters and prompts real Lyzr agents. |
-| **Transaction Proposal** | Triggers mock payloads. | Queries live Lyzr AI agent runtimes to draft transaction payloads. |
-| **Execution** | Simulation updates database entries. | Co-signs transaction requests and triggers Sepolia testnet execution via contract interfaces. |

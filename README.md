@@ -5,6 +5,9 @@
 > *   **Domain:** Domain 1: FinTech
 > *   **Problem Statement:** #2 — "The Kill Switch"
 
+> [!NOTE]
+> The AI agents used here are created from Lyzr using prompts and we (team) have not created them using Machine Learning; hence, no machine learning is used in this project.
+
 AgentShield is a production-grade, out-of-band **Secure AI Wallet Governance Platform** designed to secure, govern, and audit financial transactions initiated by autonomous AI agents (such as Lyzr AI or internal simulators). It acts as a mandatory validation firewall between AI agents and blockchain wallets.
 
 ---
@@ -244,7 +247,7 @@ AgentShield leverages a robust, modern technology stack across frontend, backend
 *   **Databases & Caching**:
     *   **MongoDB Atlas**: Stores telemetry data, organization structures, and agent credentials.
 *   **AI Agents**:
-    *   **Lyzr AI Platform**: Deployed autonomous REST agents acting as live transaction proposers.
+    *   **Lyzr AI Platform**: Autonomous REST agents created via prompts (no machine learning used).
 *   **Blockchain & Smart Contracts**:
     *   **Solidity / Hardhat**: Contract compiles, tests, and deploys `TransactionExecutor.sol` and `AgentWallet.sol` files.
     *   **MetaMask**: Connected client wallet executing EIP-1193 sign-offs and transactions.
