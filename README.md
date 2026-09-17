@@ -18,8 +18,6 @@ AgentShield is a production-grade, out-of-band **Secure AI Wallet Governance Pla
 *   **Team Members:**
     *   **Prince Jha** (Team Leader)
     *   **Sachin Jha**
-    *   **Bhavesh Jadhav**
-    *   **Ishaan Dubey**
 *   **Hosted Application URL:** [Launch AgentShield Console](https://agent-shield-the-kill-switch-git-ver-970f9b-sjha04180s-projects.vercel.app/) 
 *   **Project Presentation PPT:** [View Presentation Slides](https://drive.google.com/file/d/132vPwNDrd4SlKbirrHkzUv8Rx8qgxMgO/view?usp=sharing) 
 
